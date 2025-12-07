@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/work_log.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
-import '../widgets/work_log_card.dart';
+import 'work_log_detail_screen.dart';
 
 class EquipmentViewScreen extends StatefulWidget {
   const EquipmentViewScreen({super.key});
@@ -14,206 +15,455 @@ class EquipmentViewScreen extends StatefulWidget {
 class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
-  String? _selectedEquipment;
-  List<String> _equipmentNames = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadEquipmentNames();
-  }
-
-  Future<void> _loadEquipmentNames() async {
-    final userId = _authService.currentUser?.uid ?? '';
-    final names = await _firestoreService.getUniqueEquipmentNames(userId);
-    setState(() {
-      _equipmentNames = names;
-      if (names.isNotEmpty && _selectedEquipment == null) {
-        _selectedEquipment = names.first;
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final userId = _authService.currentUser?.uid ?? '';
 
-    if (_selectedEquipment == null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade400, Colors.blue.shade600],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: const Row(
+    return FutureBuilder<Map<String, WorkLog>>(
+      future: _firestoreService.getEquipmentsWithLatestLog(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('에러: ${snapshot.error}'));
+        }
+
+        final equipmentLogs = snapshot.data ?? {};
+
+        if (equipmentLogs.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.settings, color: Colors.white, size: 28),
-                SizedBox(width: 12),
+                Icon(Icons.inbox, size: 80, color: Colors.grey),
+                SizedBox(height: 16),
                 Text(
-                  '설비 선택',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  '등록된 설비가 없습니다',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: _equipmentNames.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.inbox, size: 80, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
-                          '등록된 설비가 없습니다',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  )
-                : GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 2.5,
-                    ),
-                    itemCount: _equipmentNames.length,
-                    itemBuilder: (context, index) {
-                      final equipmentName = _equipmentNames[index];
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedEquipment = equipmentName;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.blue.shade300, Colors.blue.shade500],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              equipmentName,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      );
-    }
+          );
+        }
 
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade400, Colors.blue.shade600],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  setState(() {
-                    _selectedEquipment = null;
-                  });
-                },
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _selectedEquipment!,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+        // 최근 일지 작성 순으로 정렬
+        final sortedEquipments = equipmentLogs.entries.toList()
+          ..sort((a, b) => b.value.createdAt.compareTo(a.value.createdAt));
+
+        final allEquipmentNames = sortedEquipments.map((e) => e.key).toList();
+
+        return Column(
+          children: [
+            // 설비 조회 버튼
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: Colors.blue.shade50,
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AllEquipmentsScreen(
+                          equipmentNames: allEquipmentNames,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.settings, size: 18),
+                  label: const Text('설비 조회'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: StreamBuilder<List<WorkLog>>(
-            stream: _firestoreService.getWorkLogsByEquipment(
-              userId,
-              _selectedEquipment!,
             ),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError) {
-                return Center(child: Text('에러: ${snapshot.error}'));
-              }
-
-              final workLogs = snapshot.data ?? [];
-
-              if (workLogs.isEmpty) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.work_off, size: 80, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        '해당 설비의 작업 이력이 없습니다',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return ListView.builder(
+            Expanded(
+              child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: workLogs.length,
+                itemCount: sortedEquipments.length,
                 itemBuilder: (context, index) {
-                  return WorkLogCard(workLog: workLogs[index]);
+                  final entry = sortedEquipments[index];
+                  final equipmentName = entry.key;
+                  final latestLog = entry.value;
+
+                  // 내용 미리보기 (최대 50자)
+                  final preview = latestLog.content.length > 50
+                      ? '${latestLog.content.substring(0, 50)}...'
+                      : latestLog.content;
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EquipmentHistoryScreen(
+                              equipmentName: equipmentName,
+                            ),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              equipmentName,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              preview.isNotEmpty ? preview : '내용 없음',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                                height: 1.4,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
                 },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// 특정 설비의 날짜별 이력 화면
+class EquipmentHistoryScreen extends StatelessWidget {
+  final String equipmentName;
+
+  const EquipmentHistoryScreen({
+    super.key,
+    required this.equipmentName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final AuthService authService = AuthService();
+    final FirestoreService firestoreService = FirestoreService();
+    final userId = authService.currentUser?.uid ?? '';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(equipmentName),
+      ),
+      body: FutureBuilder<Map<DateTime, List<WorkLog>>>(
+        future: firestoreService.getWorkLogsByEquipmentGroupedByDate(
+          userId,
+          equipmentName,
+        ),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('에러: ${snapshot.error}'));
+          }
+
+          final groupedLogs = snapshot.data ?? {};
+
+          if (groupedLogs.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.work_off, size: 80, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    '해당 설비의 작업 이력이 없습니다',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          // 날짜 순으로 정렬
+          final sortedDates = groupedLogs.keys.toList()
+            ..sort((a, b) => b.compareTo(a));
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: sortedDates.length,
+            itemBuilder: (context, index) {
+              final date = sortedDates[index];
+              final logs = groupedLogs[date]!;
+              final dateStr = DateFormat('yyyy년 MM월 dd일').format(date);
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EquipmentDateLogsScreen(
+                          equipmentName: equipmentName,
+                          date: date,
+                          logs: logs,
+                        ),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              dateStr,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '일지 ${logs.length}개',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Icon(Icons.chevron_right, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
               );
             },
-          ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// 특정 설비의 특정 날짜 일지 목록 화면
+class EquipmentDateLogsScreen extends StatelessWidget {
+  final String equipmentName;
+  final DateTime date;
+  final List<WorkLog> logs;
+
+  const EquipmentDateLogsScreen({
+    super.key,
+    required this.equipmentName,
+    required this.date,
+    required this.logs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('yyyy년 MM월 dd일').format(date);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              equipmentName,
+              style: const TextStyle(fontSize: 18),
+            ),
+            Text(
+              dateStr,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+            ),
+          ],
         ),
-      ],
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: logs.length,
+        itemBuilder: (context, index) {
+          final log = logs[index];
+          final timeStr = DateFormat('HH:mm').format(log.createdAt);
+
+          // 내용 미리보기
+          final preview = log.content.length > 100
+              ? '${log.content.substring(0, 100)}...'
+              : log.content;
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WorkLogDetailScreen(
+                      workLog: log,
+                      showEquipmentFirst: true,
+                    ),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      timeStr,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      preview.isNotEmpty ? preview : '내용 없음',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Colors.black87,
+                        height: 1.4,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (log.mediaUrls.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.attach_file,
+                            size: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '첨부 ${log.mediaUrls.length}개',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// 모든 설비 그리드 화면
+class AllEquipmentsScreen extends StatelessWidget {
+  final List<String> equipmentNames;
+
+  const AllEquipmentsScreen({
+    super.key,
+    required this.equipmentNames,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('설비 조회'),
+      ),
+      body: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 2.5,
+        ),
+        itemCount: equipmentNames.length,
+        itemBuilder: (context, index) {
+          final equipmentName = equipmentNames[index];
+          return InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EquipmentHistoryScreen(
+                    equipmentName: equipmentName,
+                  ),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade300, Colors.blue.shade500],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  equipmentName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

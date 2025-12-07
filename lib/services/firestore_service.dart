@@ -66,4 +66,78 @@ class FirestoreService {
 
     return equipmentNames.toList()..sort();
   }
+
+  // 최근 일지 작성된 설비 순으로 정렬하여 각 설비의 최근 일지 가져오기
+  Future<Map<String, WorkLog>> getEquipmentsWithLatestLog(String userId) async {
+    final snapshot = await _firestore
+        .collection(_collection)
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    final Map<String, WorkLog> equipmentLatestLogs = {};
+
+    for (var doc in snapshot.docs) {
+      final workLog = WorkLog.fromFirestore(doc);
+      if (!equipmentLatestLogs.containsKey(workLog.equipmentName)) {
+        equipmentLatestLogs[workLog.equipmentName] = workLog;
+      }
+    }
+
+    return equipmentLatestLogs;
+  }
+
+  // 일지가 존재하는 날짜 목록 가져오기 (최신순)
+  Future<List<DateTime>> getDatesWithLogs(String userId) async {
+    final snapshot = await _firestore
+        .collection(_collection)
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    final Set<DateTime> dates = {};
+
+    for (var doc in snapshot.docs) {
+      final workLog = WorkLog.fromFirestore(doc);
+      final dateOnly = DateTime(
+        workLog.createdAt.year,
+        workLog.createdAt.month,
+        workLog.createdAt.day,
+      );
+      dates.add(dateOnly);
+    }
+
+    return dates.toList();
+  }
+
+  // 특정 설비의 날짜별 일지 그룹핑
+  Future<Map<DateTime, List<WorkLog>>> getWorkLogsByEquipmentGroupedByDate(
+    String userId,
+    String equipmentName,
+  ) async {
+    final snapshot = await _firestore
+        .collection(_collection)
+        .where('userId', isEqualTo: userId)
+        .where('equipmentName', isEqualTo: equipmentName)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    final Map<DateTime, List<WorkLog>> groupedLogs = {};
+
+    for (var doc in snapshot.docs) {
+      final workLog = WorkLog.fromFirestore(doc);
+      final dateOnly = DateTime(
+        workLog.createdAt.year,
+        workLog.createdAt.month,
+        workLog.createdAt.day,
+      );
+
+      if (!groupedLogs.containsKey(dateOnly)) {
+        groupedLogs[dateOnly] = [];
+      }
+      groupedLogs[dateOnly]!.add(workLog);
+    }
+
+    return groupedLogs;
+  }
 }
