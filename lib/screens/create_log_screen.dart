@@ -5,6 +5,7 @@ import '../models/work_log.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import 'work_log_detail_screen.dart';
 
 class CreateLogScreen extends StatefulWidget {
   const CreateLogScreen({super.key});
@@ -103,19 +104,31 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
         mediaTypes: _mediaTypes,
       );
 
-      await _firestoreService.createWorkLog(workLog);
+      final createdWorkLog = await _firestoreService.createWorkLog(workLog);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('일지가 저장되었습니다')),
-        );
-
+        // 입력 필드 초기화
         _equipmentController.clear();
         _contentController.clear();
         setState(() {
           _mediaFiles.clear();
           _mediaTypes.clear();
         });
+
+        // 디테일 화면으로 이동
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WorkLogDetailScreen(
+              workLog: createdWorkLog,
+              showEquipmentFirst: false,
+            ),
+          ),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('일지가 저장되었습니다')),
+        );
       }
     } catch (e) {
       if (mounted) {

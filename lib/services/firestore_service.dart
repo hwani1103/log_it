@@ -5,8 +5,17 @@ class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collection = 'work_logs';
 
-  Future<void> createWorkLog(WorkLog workLog) async {
-    await _firestore.collection(_collection).add(workLog.toFirestore());
+  Future<WorkLog> createWorkLog(WorkLog workLog) async {
+    final docRef = await _firestore.collection(_collection).add(workLog.toFirestore());
+    return WorkLog(
+      id: docRef.id,
+      userId: workLog.userId,
+      equipmentName: workLog.equipmentName,
+      content: workLog.content,
+      createdAt: workLog.createdAt,
+      mediaUrls: workLog.mediaUrls,
+      mediaTypes: workLog.mediaTypes,
+    );
   }
 
   Future<void> updateWorkLog(String id, WorkLog workLog) async {
