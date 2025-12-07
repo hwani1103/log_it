@@ -62,6 +62,14 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
     }
   }
 
+  String _capitalizeEnglishWords(String text) {
+    // 띄어쓰기, 구두점(., /, !, ?, - 등) 뒤의 영어 소문자를 대문자로 변환
+    return text.replaceAllMapped(
+      RegExp(r'(^|[\s.,/!?-])([a-z])'),
+      (match) => match.group(1)! + match.group(2)!.toUpperCase(),
+    );
+  }
+
   Future<void> _saveWorkLog() async {
     if (_equipmentController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,7 +97,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
         id: '',
         userId: userId,
         equipmentName: _equipmentController.text.trim().toUpperCase(),
-        content: _contentController.text.trim(),
+        content: _capitalizeEnglishWords(_contentController.text.trim()),
         createdAt: DateTime.now(),
         mediaUrls: mediaUrls,
         mediaTypes: _mediaTypes,
