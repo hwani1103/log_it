@@ -166,240 +166,211 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dateOnlyStr = DateFormat('yyyy년 MM월 dd일').format(widget.workLog.createdAt);
+    final dateStr = DateFormat('yyyy년 MM월 dd일').format(widget.workLog.createdAt);
     final timeStr = DateFormat('HH:mm').format(widget.workLog.createdAt);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('작업 일지'),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 날짜, 시간, 수정/삭제 버튼
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 헤더 정보 - 설비명만 파란색 카드
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue.shade400, Colors.blue.shade600],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: Text(
-                      widget.workLog.equipmentName,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-
-                  // 날짜와 시간 - 검정색 글씨
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          dateOnlyStr,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                          ),
+                  // 날짜와 시간
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        dateStr,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          timeStr,
+                      ),
+                      Text(
+                        timeStr,
+                        style: TextStyle(
+                          fontSize: 8,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // 수정/삭제 버튼
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: _editWorkLog,
+                        style: TextButton.styleFrom(
+                          minimumSize: Size.zero,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          '수정',
                           style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey.shade700,
+                            fontSize: 9,
+                            color: Colors.blue,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-
-                  // 작업 내용
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '작업 내용',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          widget.workLog.content.isNotEmpty
-                              ? widget.workLog.content
-                              : '내용 없음',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            height: 1.6,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // 미디어
-                  if (widget.workLog.mediaUrls.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Divider(),
-                          const SizedBox(height: 12),
-                          const Text(
-                            '첨부 파일',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                            ),
-                            itemCount: widget.workLog.mediaUrls.length,
-                            itemBuilder: (context, index) {
-                              return GestureDetector(
-                                onTap: () => _showMediaFullScreen(index),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: widget.workLog.mediaTypes[index] == 'image'
-                                      ? CachedNetworkImage(
-                                          imageUrl: widget.workLog.mediaUrls[index],
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) => Container(
-                                            color: Colors.grey.shade200,
-                                            child: const Center(
-                                              child: CircularProgressIndicator(),
-                                            ),
-                                          ),
-                                          errorWidget: (context, url, error) =>
-                                              Container(
-                                            color: Colors.grey.shade200,
-                                            child: const Icon(Icons.error),
-                                          ),
-                                        )
-                                      : _videoControllers[index] != null &&
-                                              _videoControllers[index]!
-                                                  .value
-                                                  .isInitialized
-                                          ? Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                VideoPlayer(_videoControllers[index]!),
-                                                const Center(
-                                                  child: Icon(
-                                                    Icons.play_circle_outline,
-                                                    size: 50,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ],
-                                            )
-                                          : Container(
-                                              color: Colors.grey.shade200,
-                                              child: const Center(
-                                                child: CircularProgressIndicator(),
-                                              ),
-                                            ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                        ],
                       ),
-                    ),
+                      const SizedBox(width: 4),
+                      TextButton(
+                        onPressed: _deleteWorkLog,
+                        style: TextButton.styleFrom(
+                          minimumSize: Size.zero,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          '삭제',
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-          ),
 
-          // 수정하기, 삭제하기 버튼
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
+            // 설비명 - 파란 배경
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              color: Colors.blue,
+              child: Text(
+                widget.workLog.equipmentName,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-              ],
+              ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _editWorkLog,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      '수정하기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+
+            // 작업 내용
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '작업내용',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _deleteWorkLog,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      '삭제하기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.workLog.content.isNotEmpty
+                        ? widget.workLog.content
+                        : '내용 없음',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      height: 1.6,
+                      color: Colors.black,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // 미디어
+            if (widget.workLog.mediaUrls.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '첨부 파일',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: widget.workLog.mediaUrls.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () => _showMediaFullScreen(index),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: widget.workLog.mediaTypes[index] == 'image'
+                                ? CachedNetworkImage(
+                                    imageUrl: widget.workLog.mediaUrls[index],
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.grey.shade200,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      color: Colors.grey.shade200,
+                                      child: const Icon(Icons.error),
+                                    ),
+                                  )
+                                : _videoControllers[index] != null &&
+                                        _videoControllers[index]!
+                                            .value
+                                            .isInitialized
+                                    ? Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          VideoPlayer(_videoControllers[index]!),
+                                          const Center(
+                                            child: Icon(
+                                              Icons.play_circle_outline,
+                                              size: 50,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Container(
+                                        color: Colors.grey.shade200,
+                                        child: const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
