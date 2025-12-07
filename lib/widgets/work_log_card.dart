@@ -3,11 +3,15 @@ import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
 import '../models/work_log.dart';
+import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 
 class WorkLogCard extends StatelessWidget {
   final WorkLog workLog;
+  final FirestoreService _firestoreService = FirestoreService();
+  final StorageService _storageService = StorageService();
 
-  const WorkLogCard({super.key, required this.workLog});
+  WorkLogCard({super.key, required this.workLog});
 
   @override
   Widget build(BuildContext context) {
@@ -21,11 +25,13 @@ class WorkLogCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  workLog.equipmentName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    workLog.equipmentName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Text(
@@ -34,6 +40,12 @@ class WorkLogCard extends StatelessWidget {
                     fontSize: 12,
                     color: Colors.grey,
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  onPressed: () => _confirmDelete(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -100,6 +112,54 @@ class WorkLogCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('일지 삭제'),
+        content: const Text('이 일지를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && context.mounted) {
+      await _deleteWorkLog(context);
+    }
+  }
+
+  Future<void> _deleteWorkLog(BuildContext context) async {
+    try {
+      // Storage에서 미디어 파일 삭제
+      for (final url in workLog.mediaUrls) {
+        await _storageService.deleteMedia(url);
+      }
+
+      // Firestore에서 일지 삭제
+      await _firestoreService.deleteWorkLog(workLog.id);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('일지가 삭제되었습니다')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('삭제 실패: $e')),
+        );
+      }
+    }
   }
 
   void _showMediaFullScreen(BuildContext context, String url, String type) {

@@ -88,7 +88,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
       final workLog = WorkLog(
         id: '',
         userId: userId,
-        equipmentName: _equipmentController.text.trim(),
+        equipmentName: _equipmentController.text.trim().toUpperCase(),
         content: _contentController.text.trim(),
         createdAt: DateTime.now(),
         mediaUrls: mediaUrls,
@@ -171,6 +171,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
               labelText: '설비명',
               border: OutlineInputBorder(),
             ),
+            textCapitalization: TextCapitalization.characters,
           ),
           const SizedBox(height: 16),
           Expanded(
