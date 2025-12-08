@@ -133,18 +133,26 @@ class _EditLogScreenState extends State<EditLogScreen> {
 
       // 새로운 미디어 파일 업로드
       final List<String> newMediaUrls = [];
+      final List<String> newUploadedMediaTypes = [];
+
       for (int i = 0; i < _newMediaFiles.length; i++) {
-        final url = await _storageService.uploadMedia(
-          userId,
-          _newMediaFiles[i],
-          _newMediaTypes[i],
-        );
-        newMediaUrls.add(url);
+        try {
+          final url = await _storageService.uploadMedia(
+            userId,
+            _newMediaFiles[i],
+            _newMediaTypes[i],
+          );
+          newMediaUrls.add(url);
+          newUploadedMediaTypes.add(_newMediaTypes[i]);
+        } catch (uploadError) {
+          print('Failed to upload file ${i + 1}: $uploadError');
+          throw Exception('${_newMediaTypes[i]} 업로드 실패: $uploadError');
+        }
       }
 
       // 기존 미디어 + 새로 업로드된 미디어 결합
       final allMediaUrls = [..._existingMediaUrls, ...newMediaUrls];
-      final allMediaTypes = [..._existingMediaTypes, ..._newMediaTypes];
+      final allMediaTypes = [..._existingMediaTypes, ...newUploadedMediaTypes];
 
       final updatedWorkLog = WorkLog(
         id: widget.workLog.id,

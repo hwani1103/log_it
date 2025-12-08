@@ -113,6 +113,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
     try {
       final userId = _authService.currentUser!.uid;
       final List<String> mediaUrls = [];
+      final List<String> uploadedMediaTypes = [];
 
       // 미디어 업로드
       for (int i = 0; i < _mediaFiles.length; i++) {
@@ -125,6 +126,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
             _mediaTypes[i],
           );
           mediaUrls.add(url);
+          uploadedMediaTypes.add(_mediaTypes[i]);
           print('Successfully uploaded file ${i + 1}/${_mediaFiles.length}');
         } catch (uploadError) {
           print('Failed to upload file ${i + 1}: $uploadError');
@@ -139,7 +141,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
         content: _capitalizeEnglishWords(_contentController.text.trim()),
         createdAt: DateTime.now(),
         mediaUrls: mediaUrls,
-        mediaTypes: _mediaTypes,
+        mediaTypes: uploadedMediaTypes,
       );
 
       final createdWorkLog = await _firestoreService.createWorkLog(workLog);
