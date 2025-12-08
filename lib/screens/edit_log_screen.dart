@@ -124,14 +124,14 @@ class _EditLogScreenState extends State<EditLogScreen> {
   String _parseEquipmentName(String input) {
     final trimmed = input.trim().toUpperCase();
 
-    // 패턴 1: 영어2글자 + (하이픈 선택) + 숫자4개 + 알파벳(선택, 여러개 가능)
-    final pattern2Digit = RegExp(r'^([A-Z]{2})-?(\d{4})([A-Z]*)$');
+    // 패턴 1: 영어2글자 + (하이픈 선택) + 숫자4개 + 알파벳+숫자(선택, 여러개 가능)
+    final pattern2Digit = RegExp(r'^([A-Z]{2})-?(\d{4})([A-Z0-9]*)$');
     final match2 = pattern2Digit.firstMatch(trimmed);
 
     if (match2 != null) {
       var prefix = match2.group(1)!;       // 예: LI
       final numbers = match2.group(2)!;     // 예: 8504
-      final suffix = match2.group(3) ?? ''; // 예: A 또는 A1
+      final suffix = match2.group(3) ?? ''; // 예: A, A1, A2
 
       // Alias 서비스를 통해 표준 prefix로 변환
       prefix = _aliasService.getStandardPrefix(prefix);
@@ -139,8 +139,8 @@ class _EditLogScreenState extends State<EditLogScreen> {
       return '$prefix-$numbers$suffix';    // LIA-8504A
     }
 
-    // 패턴 2: 영어3글자 + (하이픈 선택) + 숫자4개 + 알파벳(선택, 여러개 가능)
-    final pattern3Digit = RegExp(r'^([A-Z]{3})-?(\d{4})([A-Z]*)$');
+    // 패턴 2: 영어3글자 + (하이픈 선택) + 숫자4개 + 알파벳+숫자(선택, 여러개 가능)
+    final pattern3Digit = RegExp(r'^([A-Z]{3})-?(\d{4})([A-Z0-9]*)$');
     final match3 = pattern3Digit.firstMatch(trimmed);
 
     if (match3 != null) {
@@ -154,8 +154,8 @@ class _EditLogScreenState extends State<EditLogScreen> {
       return '$prefix-$numbers$suffix';
     }
 
-    // 패턴 3: 영어4글자+ + (하이픈 선택) + 숫자4개 + 알파벳(선택, 여러개 가능)
-    final pattern4Plus = RegExp(r'^([A-Z]{4,})-?(\d{4})([A-Z]*)$');
+    // 패턴 3: 영어4글자+ + (하이픈 선택) + 숫자4개 + 알파벳+숫자(선택, 여러개 가능)
+    final pattern4Plus = RegExp(r'^([A-Z]{4,})-?(\d{4})([A-Z0-9]*)$');
     final match4 = pattern4Plus.firstMatch(trimmed);
 
     if (match4 != null) {
