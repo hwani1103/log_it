@@ -104,6 +104,23 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
     );
   }
 
+  String _parseEquipmentName(String input) {
+    final trimmed = input.trim().toUpperCase();
+    // 패턴: 영어2글자 + (하이픈 선택) + 숫자4개 + 알파벳1개(선택)
+    final pattern = RegExp(r'^([A-Z]{2})-?(\d{4})([A-Z]?)$');
+    final match = pattern.firstMatch(trimmed);
+
+    if (match != null) {
+      final prefix = match.group(1)!;      // 예: RE
+      final numbers = match.group(2)!;     // 예: 8501
+      final suffix = match.group(3) ?? ''; // 예: A (선택적)
+      return '$prefix-$numbers$suffix';    // RE-8501A
+    }
+
+    // 패턴에 맞지 않으면 그냥 대문자로 반환
+    return trimmed;
+  }
+
   Future<void> _saveWorkLog() async {
     if (_equipmentController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -153,7 +170,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
       final workLog = WorkLog(
         id: '',
         userId: userId,
-        equipmentName: _equipmentController.text.trim().toUpperCase(),
+        equipmentName: _parseEquipmentName(_equipmentController.text),
         content: _capitalizeEnglishWords(_contentController.text.trim()),
         createdAt: createdAt,
         mediaUrls: mediaUrls,
