@@ -191,7 +191,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                       Text(
                         dateStr,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
@@ -199,7 +199,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                       Text(
                         timeStr,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 16,
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -218,7 +218,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                         child: const Text(
                           '수정',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 16,
                             color: Colors.blue,
                           ),
                         ),
@@ -234,7 +234,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                         child: const Text(
                           '삭제',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 16,
                             color: Colors.red,
                           ),
                         ),
@@ -253,7 +253,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
               child: Text(
                 widget.workLog.equipmentName,
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
@@ -269,7 +269,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                   const Text(
                     '작업내용',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
@@ -280,7 +280,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                         ? widget.workLog.content
                         : '내용 없음',
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 17,
                       height: 1.6,
                       color: Colors.black87,
                     ),
@@ -301,7 +301,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                     const Text(
                       '첨부 파일',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
