@@ -13,11 +13,13 @@ import 'edit_log_screen.dart';
 class WorkLogDetailScreen extends StatefulWidget {
   final WorkLog workLog;
   final bool showEquipmentFirst; // true: 설비별 조회, false: 날짜별 조회
+  final bool fromCreateTab; // true: 일지작성 탭에서 왔음
 
   const WorkLogDetailScreen({
     super.key,
     required this.workLog,
     this.showEquipmentFirst = false,
+    this.fromCreateTab = false,
   });
 
   @override
@@ -120,6 +122,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
             builder: (context) => WorkLogDetailScreen(
               workLog: updatedWorkLog,
               showEquipmentFirst: widget.showEquipmentFirst,
+              fromCreateTab: widget.fromCreateTab,
             ),
           ),
         );
@@ -191,6 +194,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
               builder: (context) => WorkLogDetailScreen(
                 workLog: updatedWorkLog,
                 showEquipmentFirst: widget.showEquipmentFirst,
+                fromCreateTab: widget.fromCreateTab,
               ),
             ),
           );
@@ -244,7 +248,16 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
     final dateStr = DateFormat('yyyy년 MM월 dd일').format(widget.workLog.createdAt);
     final timeStr = DateFormat('HH:mm').format(widget.workLog.createdAt);
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        // 일지작성 탭에서 온 경우 날짜별 조회 탭으로 전환 요청
+        if (widget.fromCreateTab) {
+          Navigator.pop(context, 'switchToDateView');
+          return false;
+        }
+        return true; // 기본 뒤로가기 동작
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('작업 일지'),
       ),
@@ -466,6 +479,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
               ),
           ],
         ),
+      ),
       ),
     );
   }

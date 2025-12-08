@@ -10,8 +10,9 @@ import 'work_log_detail_screen.dart';
 
 class CreateLogScreen extends StatefulWidget {
   final DateTime? selectedDate; // 날짜별 조회에서 온 경우 해당 날짜 사용
+  final Function(int)? onRequestTabSwitch; // 탭 전환 요청 callback
 
-  const CreateLogScreen({super.key, this.selectedDate});
+  const CreateLogScreen({super.key, this.selectedDate, this.onRequestTabSwitch});
 
   @override
   State<CreateLogScreen> createState() => _CreateLogScreenState();
@@ -137,8 +138,17 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
         }
       }
 
-      // 날짜별 조회에서 온 경우 해당 날짜 사용, 아니면 현재 시간
-      final DateTime createdAt = widget.selectedDate ?? DateTime.now();
+      // 날짜별 조회에서 온 경우 해당 날짜에 현재 시간 적용, 아니면 현재 시간
+      final DateTime createdAt = widget.selectedDate != null
+          ? DateTime(
+              widget.selectedDate!.year,
+              widget.selectedDate!.month,
+              widget.selectedDate!.day,
+              DateTime.now().hour,
+              DateTime.now().minute,
+              DateTime.now().second,
+            )
+          : DateTime.now();
 
       final workLog = WorkLog(
         id: '',
@@ -174,15 +184,21 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
           );
         } else {
           // 일지작성 탭에서 온 경우 DetailScreen을 push
-          Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => WorkLogDetailScreen(
                 workLog: createdWorkLog,
                 showEquipmentFirst: false,
+                fromCreateTab: true, // 일지작성 탭에서 왔음을 표시
               ),
             ),
           );
+
+          // DetailScreen에서 돌아올 때 날짜별 조회 탭으로 전환 요청
+          if (result == 'switchToDateView' && widget.onRequestTabSwitch != null) {
+            widget.onRequestTabSwitch!(1); // 인덱스 1 = 날짜별 조회
+          }
         }
 
         ScaffoldMessenger.of(context).showSnackBar(

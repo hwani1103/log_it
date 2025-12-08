@@ -22,7 +22,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _screens = [
-      const CreateLogScreen(),
+      CreateLogScreen(
+        onRequestTabSwitch: (int index) {
+          setState(() => _currentIndex = index);
+        },
+      ),
       const DateViewScreen(),
       const EquipmentViewScreen(),
     ];
@@ -30,8 +34,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: () async {
+        // 날짜별 조회 탭(인덱스 1)이면 앱 종료
+        if (_currentIndex == 1) {
+          return true;
+        }
+        // 다른 탭이면 날짜별 조회 탭으로 이동
+        setState(() => _currentIndex = 1);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
         title: const Text('Log.it'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
@@ -67,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
             label: '설비별 조회',
           ),
         ],
+      ),
       ),
     );
   }
