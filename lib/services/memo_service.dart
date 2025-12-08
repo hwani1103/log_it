@@ -5,7 +5,7 @@ class MemoService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collection = 'memos';
 
-  // 특정 날짜의 메모 가져오기
+  // 특정 날짜의 메모 가져오기 (클라이언트에서 필터링)
   Future<Memo?> getMemoByDate(String userId, DateTime date) async {
     print('=============== 네트워크 요청!! ===============');
     print('📡 [Firestore] 메모 조회');
@@ -13,23 +13,26 @@ class MemoService {
     print('===========================================');
 
     final dateOnly = Memo.dateOnly(date);
-    final nextDay = dateOnly.add(const Duration(days: 1));
 
+    // 모든 메모 가져오기
     final snapshot = await _firestore
         .collection(_collection)
         .where('userId', isEqualTo: userId)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateOnly))
-        .where('date', isLessThan: Timestamp.fromDate(nextDay))
-        .limit(1)
         .get();
 
-    if (snapshot.docs.isEmpty) {
-      print('✅ [Firestore] 메모 없음');
-      return null;
+    // 클라이언트에서 날짜 필터링
+    for (var doc in snapshot.docs) {
+      final memo = Memo.fromFirestore(doc);
+      if (memo.date.year == dateOnly.year &&
+          memo.date.month == dateOnly.month &&
+          memo.date.day == dateOnly.day) {
+        print('✅ [Firestore] 메모 조회 완료');
+        return memo;
+      }
     }
 
-    print('✅ [Firestore] 메모 조회 완료');
-    return Memo.fromFirestore(snapshot.docs.first);
+    print('✅ [Firestore] 메모 없음');
+    return null;
   }
 
   // 모든 메모 가져오기 (클라이언트에서 날짜 내림차순 정렬)
@@ -53,7 +56,7 @@ class MemoService {
     return memos;
   }
 
-  // 메모 저장 (생성 또는 업데이트)
+  // 메모 저장 (생성 또는 업데이트) - 클라이언트에서 필터링
   Future<void> saveMemo(String userId, DateTime date, String content) async {
     print('=============== 네트워크 요청!! ===============');
     print('📡 [Firestore] 메모 저장');
@@ -61,20 +64,28 @@ class MemoService {
     print('===========================================');
 
     final dateOnly = Memo.dateOnly(date);
-    final nextDay = dateOnly.add(const Duration(days: 1));
 
-    // 기존 메모 찾기
-    final existing = await _firestore
+    // 모든 메모 가져오기
+    final snapshot = await _firestore
         .collection(_collection)
         .where('userId', isEqualTo: userId)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateOnly))
-        .where('date', isLessThan: Timestamp.fromDate(nextDay))
-        .limit(1)
         .get();
+
+    // 클라이언트에서 기존 메모 찾기
+    String? existingId;
+    for (var doc in snapshot.docs) {
+      final memo = Memo.fromFirestore(doc);
+      if (memo.date.year == dateOnly.year &&
+          memo.date.month == dateOnly.month &&
+          memo.date.day == dateOnly.day) {
+        existingId = doc.id;
+        break;
+      }
+    }
 
     final now = DateTime.now();
 
-    if (existing.docs.isEmpty) {
+    if (existingId == null) {
       // 새 메모 생성
       final memo = Memo(
         id: '',
@@ -89,7 +100,7 @@ class MemoService {
       print('✅ [Firestore] 새 메모 생성 완료');
     } else {
       // 기존 메모 업데이트
-      await _firestore.collection(_collection).doc(existing.docs.first.id).update({
+      await _firestore.collection(_collection).doc(existingId).update({
         'content': content,
         'updatedAt': Timestamp.fromDate(now),
       });
