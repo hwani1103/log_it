@@ -42,8 +42,8 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
   Widget build(BuildContext context) {
     final userId = _authService.currentUser?.uid ?? '';
 
-    return FutureBuilder<List<WorkLog>>(
-      future: _firestoreService.getAllWorkLogs(userId),
+    return StreamBuilder<List<WorkLog>>(
+      stream: _firestoreService.getAllWorkLogs(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
