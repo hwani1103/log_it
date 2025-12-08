@@ -11,12 +11,16 @@ class StorageService {
       final fileName = '${_uuid.v4()}.${_getFileExtension(file.path)}';
       final ref = _storage.ref().child('users/$userId/$fileName');
 
+      print('Uploading $mediaType: ${file.path}');
+      print('File size: ${await file.length()} bytes');
+
       final uploadTask = await ref.putFile(file);
       final downloadUrl = await uploadTask.ref.getDownloadURL();
 
+      print('Upload completed: $downloadUrl');
       return downloadUrl;
     } catch (e) {
-      print('Upload Error: $e');
+      print('Upload Error for $mediaType: $e');
       rethrow;
     }
   }

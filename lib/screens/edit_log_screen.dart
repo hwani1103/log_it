@@ -132,7 +132,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('일지가 수정되었습니다')),
         );
-        Navigator.pop(context, true); // true를 반환하여 수정 완료를 알림
+        Navigator.pop(context, updatedWorkLog); // 수정된 WorkLog를 반환
       }
     } catch (e) {
       if (mounted) {

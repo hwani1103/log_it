@@ -103,9 +103,18 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
       MaterialPageRoute(
         builder: (context) => EditLogScreen(workLog: widget.workLog),
       ),
-    ).then((updated) {
-      if (updated == true && mounted) {
-        Navigator.pop(context);
+    ).then((updatedWorkLog) {
+      if (updatedWorkLog != null && mounted) {
+        // 현재 디테일 화면을 닫고 수정된 일지의 새 디테일 화면으로 교체
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WorkLogDetailScreen(
+              workLog: updatedWorkLog,
+              showEquipmentFirst: widget.showEquipmentFirst,
+            ),
+          ),
+        );
       }
     });
   }
