@@ -44,12 +44,41 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
   }
 
   Future<void> _pickVideo() async {
-    final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    if (video != null) {
-      setState(() {
-        _mediaFiles.add(File(video.path));
-        _mediaTypes.add('video');
-      });
+    try {
+      final XFile? video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 5), // 5분 제한
+      );
+      if (video != null) {
+        final file = File(video.path);
+        final fileSize = await file.length();
+        final fileSizeMB = fileSize / (1024 * 1024);
+
+        print('Selected video: ${video.path}');
+        print('Video size: ${fileSizeMB.toStringAsFixed(2)} MB');
+
+        // 100MB 제한
+        if (fileSizeMB > 100) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('동영상 크기가 너무 큽니다 (${fileSizeMB.toStringAsFixed(1)}MB). 100MB 이하로 선택해주세요.')),
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          _mediaFiles.add(file);
+          _mediaTypes.add('video');
+        });
+      }
+    } catch (e) {
+      print('Video selection error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('동영상 선택 실패: $e')),
+        );
+      }
     }
   }
 
@@ -85,13 +114,22 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
       final userId = _authService.currentUser!.uid;
       final List<String> mediaUrls = [];
 
+      // 미디어 업로드
       for (int i = 0; i < _mediaFiles.length; i++) {
-        final url = await _storageService.uploadMedia(
-          userId,
-          _mediaFiles[i],
-          _mediaTypes[i],
-        );
-        mediaUrls.add(url);
+        print('Uploading file ${i + 1}/${_mediaFiles.length}: ${_mediaTypes[i]}');
+
+        try {
+          final url = await _storageService.uploadMedia(
+            userId,
+            _mediaFiles[i],
+            _mediaTypes[i],
+          );
+          mediaUrls.add(url);
+          print('Successfully uploaded file ${i + 1}/${_mediaFiles.length}');
+        } catch (uploadError) {
+          print('Failed to upload file ${i + 1}: $uploadError');
+          throw Exception('${_mediaTypes[i]} 업로드 실패 (${i + 1}/${_mediaFiles.length}): $uploadError');
+        }
       }
 
       final workLog = WorkLog(

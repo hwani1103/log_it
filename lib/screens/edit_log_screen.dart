@@ -62,12 +62,41 @@ class _EditLogScreenState extends State<EditLogScreen> {
   }
 
   Future<void> _pickVideo() async {
-    final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    if (video != null) {
-      setState(() {
-        _newMediaFiles.add(File(video.path));
-        _newMediaTypes.add('video');
-      });
+    try {
+      final XFile? video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 5), // 5분 제한
+      );
+      if (video != null) {
+        final file = File(video.path);
+        final fileSize = await file.length();
+        final fileSizeMB = fileSize / (1024 * 1024);
+
+        print('Selected video: ${video.path}');
+        print('Video size: ${fileSizeMB.toStringAsFixed(2)} MB');
+
+        // 100MB 제한
+        if (fileSizeMB > 100) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('동영상 크기가 너무 큽니다 (${fileSizeMB.toStringAsFixed(1)}MB). 100MB 이하로 선택해주세요.')),
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          _newMediaFiles.add(file);
+          _newMediaTypes.add('video');
+        });
+      }
+    } catch (e) {
+      print('Video selection error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('동영상 선택 실패: $e')),
+        );
+      }
     }
   }
 
