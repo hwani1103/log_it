@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,6 +7,7 @@ import '../models/work_log.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../utils/cache_helper.dart';
+import '../utils/video_cache_helper.dart';
 
 class WorkLogCard extends StatelessWidget {
   final WorkLog workLog;
@@ -204,31 +206,75 @@ class VideoPlayerWidget extends StatefulWidget {
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..initialize().then((_) {
-        setState(() {});
-        _controller.play();
-      });
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      // 캐시에서 동영상 파일 가져오기 (없으면 다운로드)
+      final cacheHelper = VideoCacheHelper();
+      final file = await cacheHelper.getCachedVideoFile(widget.url);
+
+      // 캐시된 로컬 파일로 VideoPlayer 초기화
+      _controller = VideoPlayerController.file(file)
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            _controller!.play();
+          }
+        }).catchError((error) {
+          if (mounted) {
+            setState(() {
+              _error = error.toString();
+              _isLoading = false;
+            });
+          }
+        });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return _controller.value.isInitialized
-        ? AspectRatio(
-            aspectRatio: _controller.value.aspectRatio,
-            child: VideoPlayer(_controller),
-          )
-        : const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, color: Colors.red),
+            const SizedBox(height: 8),
+            Text('동영상 로드 실패', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoading || _controller == null || !_controller!.value.isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return AspectRatio(
+      aspectRatio: _controller!.value.aspectRatio,
+      child: VideoPlayer(_controller!),
+    );
   }
 }

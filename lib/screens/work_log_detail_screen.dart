@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,6 +7,7 @@ import '../models/work_log.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../utils/cache_helper.dart';
+import '../utils/video_cache_helper.dart';
 import 'edit_log_screen.dart';
 
 class WorkLogDetailScreen extends StatefulWidget {
@@ -35,19 +37,27 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
     super.dispose();
   }
 
-  void _initializeVideoPlayer(int index) {
+  Future<void> _initializeVideoPlayer(int index) async {
     if (_videoControllers.containsKey(index)) {
       return; // 이미 초기화됨
     }
 
     if (index < widget.workLog.mediaTypes.length &&
         widget.workLog.mediaTypes[index] == 'video') {
-      final controller = VideoPlayerController.networkUrl(
-        Uri.parse(widget.workLog.mediaUrls[index]),
-      )..initialize().then((_) {
-          if (mounted) setState(() {});
-        });
-      _videoControllers[index] = controller;
+      try {
+        // 캐시에서 동영상 파일 가져오기
+        final cacheHelper = VideoCacheHelper();
+        final file = await cacheHelper.getCachedVideoFile(widget.workLog.mediaUrls[index]);
+
+        // 캐시된 로컬 파일로 VideoPlayer 초기화
+        final controller = VideoPlayerController.file(file)
+          ..initialize().then((_) {
+            if (mounted) setState(() {});
+          });
+        _videoControllers[index] = controller;
+      } catch (e) {
+        print('Failed to initialize video player: $e');
+      }
     }
   }
 
@@ -115,6 +125,85 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
         );
       }
     });
+  }
+
+  Future<void> _deleteMedia(int index) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('첨부파일 삭제'),
+        content: Text('이 ${widget.workLog.mediaTypes[index] == 'image' ? '사진을' : '동영상을'} 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        // Storage에서 파일 삭제
+        await _storageService.deleteMedia(widget.workLog.mediaUrls[index]);
+
+        // 동영상이면 캐시도 삭제
+        if (widget.workLog.mediaTypes[index] == 'video') {
+          final cacheHelper = VideoCacheHelper();
+          await cacheHelper.removeFromCache(widget.workLog.mediaUrls[index]);
+
+          // VideoController도 dispose
+          if (_videoControllers.containsKey(index)) {
+            _videoControllers[index]?.dispose();
+            _videoControllers.remove(index);
+          }
+        }
+
+        // 배열에서 제거
+        final updatedMediaUrls = List<String>.from(widget.workLog.mediaUrls)..removeAt(index);
+        final updatedMediaTypes = List<String>.from(widget.workLog.mediaTypes)..removeAt(index);
+
+        final updatedWorkLog = WorkLog(
+          id: widget.workLog.id,
+          userId: widget.workLog.userId,
+          equipmentName: widget.workLog.equipmentName,
+          content: widget.workLog.content,
+          createdAt: widget.workLog.createdAt,
+          mediaUrls: updatedMediaUrls,
+          mediaTypes: updatedMediaTypes,
+        );
+
+        // Firestore 업데이트
+        await _firestoreService.updateWorkLog(widget.workLog.id, updatedWorkLog);
+
+        if (mounted) {
+          // 화면 새로고침
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WorkLogDetailScreen(
+                workLog: updatedWorkLog,
+                showEquipmentFirst: widget.showEquipmentFirst,
+              ),
+            ),
+          );
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('첨부파일이 삭제되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('삭제 실패: $e')),
+          );
+        }
+      }
+    }
   }
 
   void _showMediaFullScreen(int index) {
@@ -333,39 +422,63 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                       ),
                       itemCount: widget.workLog.mediaUrls.length,
                       itemBuilder: (context, index) {
-                        return GestureDetector(
-                          onTap: () => _showMediaFullScreen(index),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: (index < widget.workLog.mediaTypes.length &&
-                                    widget.workLog.mediaTypes[index] == 'image')
-                                ? CachedNetworkImage(
-                                    imageUrl: widget.workLog.mediaUrls[index],
-                                    cacheKey: CacheHelper.getStableCacheKey(widget.workLog.mediaUrls[index]),
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(
-                                      color: Colors.grey.shade200,
-                                      child: const Center(
-                                        child: CircularProgressIndicator(),
+                        return Stack(
+                          children: [
+                            GestureDetector(
+                              onTap: () => _showMediaFullScreen(index),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: (index < widget.workLog.mediaTypes.length &&
+                                        widget.workLog.mediaTypes[index] == 'image')
+                                    ? CachedNetworkImage(
+                                        imageUrl: widget.workLog.mediaUrls[index],
+                                        cacheKey: CacheHelper.getStableCacheKey(widget.workLog.mediaUrls[index]),
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) => Container(
+                                          color: Colors.grey.shade200,
+                                          child: const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                          color: Colors.grey.shade200,
+                                          child: const Icon(Icons.error),
+                                        ),
+                                      )
+                                    : Container(
+                                        color: Colors.grey.shade200,
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.play_circle_outline,
+                                            size: 50,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                      color: Colors.grey.shade200,
-                                      child: const Icon(Icons.error),
-                                    ),
-                                  )
-                                : Container(
-                                    color: Colors.grey.shade200,
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.play_circle_outline,
-                                        size: 50,
-                                        color: Colors.blue,
-                                      ),
-                                    ),
+                              ),
+                            ),
+                            // X 버튼
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () => _deleteMedia(index),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.6),
+                                    shape: BoxShape.circle,
                                   ),
-                          ),
+                                  padding: const EdgeInsets.all(4),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),
