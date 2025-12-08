@@ -269,8 +269,36 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 child: Image.file(_mediaFiles[index], fit: BoxFit.cover),
                               )
-                            : const Center(
-                                child: Icon(Icons.videocam, size: 40),
+                            : FutureBuilder<int>(
+                                future: _mediaFiles[index].length(),
+                                builder: (context, snapshot) {
+                                  final fileName = _mediaFiles[index].path.split('/').last;
+                                  final fileSize = snapshot.hasData
+                                      ? (snapshot.data! / (1024 * 1024)).toStringAsFixed(1)
+                                      : '...';
+                                  return Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.videocam, size: 30, color: Colors.blue),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          fileName.length > 12
+                                              ? '${fileName.substring(0, 12)}...'
+                                              : fileName,
+                                          style: const TextStyle(fontSize: 10),
+                                          textAlign: TextAlign.center,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          '$fileSize MB',
+                                          style: const TextStyle(fontSize: 9, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                               ),
                       ),
                       Positioned(

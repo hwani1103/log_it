@@ -314,8 +314,23 @@ class _EditLogScreenState extends State<EditLogScreen> {
                                           const Icon(Icons.error),
                                       ),
                                     )
-                                  : const Center(
-                                      child: Icon(Icons.videocam, size: 40),
+                                  : Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.videocam, size: 30, color: Colors.blue),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            '동영상',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                          const Text(
+                                            '(기존 첨부)',
+                                            style: TextStyle(fontSize: 9, color: Colors.grey),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                             ),
                             Positioned(
@@ -349,8 +364,36 @@ class _EditLogScreenState extends State<EditLogScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                       child: Image.file(mediaFile, fit: BoxFit.cover),
                                     )
-                                  : const Center(
-                                      child: Icon(Icons.videocam, size: 40),
+                                  : FutureBuilder<int>(
+                                      future: mediaFile.length(),
+                                      builder: (context, snapshot) {
+                                        final fileName = mediaFile.path.split('/').last;
+                                        final fileSize = snapshot.hasData
+                                            ? (snapshot.data! / (1024 * 1024)).toStringAsFixed(1)
+                                            : '...';
+                                        return Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(Icons.videocam, size: 30, color: Colors.blue),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                fileName.length > 12
+                                                    ? '${fileName.substring(0, 12)}...'
+                                                    : fileName,
+                                                style: const TextStyle(fontSize: 10),
+                                                textAlign: TextAlign.center,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              Text(
+                                                '$fileSize MB',
+                                                style: const TextStyle(fontSize: 9, color: Colors.grey),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
                                     ),
                             ),
                             Positioned(
