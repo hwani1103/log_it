@@ -63,7 +63,12 @@ class _MemoScreenState extends State<MemoScreen> {
         await _memoService.saveMemo(userId, dateToSave, content);
       }
 
-      await _loadMemos();
+      // 에러 무시하고 계속 진행 (로컬 상태로 작동)
+      try {
+        await _loadMemos();
+      } catch (e) {
+        print('메모 로드 에러 (무시): $e');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -300,7 +305,7 @@ class _MemoScreenState extends State<MemoScreen> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: _allMemos.map((memo) {
@@ -311,65 +316,87 @@ class _MemoScreenState extends State<MemoScreen> {
               _selectedDate!.day == memo.date.day;
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 날짜 구분선 (탭 가능)
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (isSelected) {
-                        _selectedDate = null; // 선택 해제
-                      } else {
-                        _selectedDate = memo.date; // 선택
-                      }
-                    });
-                  },
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '$dateStr ${'─' * 30}',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: isSelected ? Colors.blue : Colors.black54,
-                            fontWeight: FontWeight.w500,
+            padding: const EdgeInsets.only(bottom: 24), // 날짜 간 간격 증가
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (isSelected) {
+                    _selectedDate = null; // 선택 해제
+                  } else {
+                    _selectedDate = memo.date; // 선택
+                  }
+                });
+              },
+              child: Container(
+                decoration: isSelected
+                    ? BoxDecoration(
+                        border: Border.all(color: Colors.blue, width: 2),
+                        borderRadius: BorderRadius.circular(8),
+                      )
+                    : null,
+                padding: isSelected ? const EdgeInsets.all(12) : null,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 날짜 구분선과 버튼을 분리
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '$dateStr ${'─' * 30}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: isSelected ? Colors.blue : Colors.black54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.visible,
                           ),
                         ),
-                      ),
-                      // 선택된 경우 수정/삭제 버튼 표시
-                      if (isSelected) ...[
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () => _toggleEditMode(memo.date),
-                          tooltip: '수정',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                          onPressed: () => _deleteMemo(memo.date),
-                          tooltip: '삭제',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
                       ],
-                    ],
-                  ),
+                    ),
+                    // 선택된 경우 수정/삭제 버튼 표시 (별도 줄)
+                    if (isSelected)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 4),
+                        child: Row(
+                          children: [
+                            TextButton.icon(
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text('수정'),
+                              onPressed: () => _toggleEditMode(memo.date),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                              label: const Text('삭제', style: TextStyle(color: Colors.red)),
+                              onPressed: () => _deleteMemo(memo.date),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    // 메모 내용
+                    Text(
+                      memo.content,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        height: 1.6,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                // 메모 내용
-                Text(
-                  memo.content,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    height: 1.6,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
+              ),
             ),
           );
         }).toList(),
