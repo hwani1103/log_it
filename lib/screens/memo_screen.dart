@@ -14,11 +14,12 @@ class MemoScreen extends StatefulWidget {
 class _MemoScreenState extends State<MemoScreen> {
   final AuthService _authService = AuthService();
   final MemoService _memoService = MemoService();
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   List<Memo> _memos = [];
   bool _isLoading = true;
-  String? _editingMemoId; // 현재 편집 중인 메모 ID (날짜 기준)
-  final Map<String, TextEditingController> _controllers = {};
+  bool _isEditMode = false;
 
   @override
   void initState() {
@@ -28,9 +29,8 @@ class _MemoScreenState extends State<MemoScreen> {
 
   @override
   void dispose() {
-    for (var controller in _controllers.values) {
-      controller.dispose();
-    }
+    _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -41,44 +41,73 @@ class _MemoScreenState extends State<MemoScreen> {
       final userId = _authService.currentUser?.uid ?? '';
       final memos = await _memoService.getAllMemos(userId);
 
+      // 전체 텍스트 생성 (날짜 + 내용)
+      final buffer = StringBuffer();
+      for (final memo in memos) {
+        final dateStr = DateFormat('M월 d일').format(memo.date);
+        buffer.writeln('$dateStr ${'─' * 30}');
+        buffer.writeln(memo.content);
+        if (memo != memos.last) {
+          buffer.writeln();
+        }
+      }
+
       setState(() {
         _memos = memos;
+        _controller.text = buffer.toString();
         _isLoading = false;
       });
     } catch (e) {
+      print('메모 로드 에러: $e');
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('메모 로드 실패: $e')),
-        );
-      }
     }
   }
 
-  String _getDateKey(DateTime date) {
-    return DateFormat('yyyy-MM-dd').format(date);
-  }
-
-  TextEditingController _getController(String dateKey, String initialContent) {
-    if (!_controllers.containsKey(dateKey)) {
-      _controllers[dateKey] = TextEditingController(text: initialContent);
+  Future<void> _saveMemo() async {
+    if (_controller.text.trim().isEmpty) {
+      setState(() {
+        _isEditMode = false;
+      });
+      return;
     }
-    return _controllers[dateKey]!;
-  }
 
-  void _startEditing(String dateKey) {
-    setState(() {
-      _editingMemoId = dateKey;
-    });
-  }
-
-  Future<void> _saveMemo(DateTime date, String content) async {
     try {
       final userId = _authService.currentUser?.uid ?? '';
-      await _memoService.saveMemo(userId, date, content);
+      final today = Memo.dateOnly(DateTime.now());
+
+      // 현재 텍스트에서 오늘 메모만 추출
+      final lines = _controller.text.split('\n');
+      final todayDateStr = DateFormat('M월 d일').format(today);
+
+      // 오늘 날짜 구분선 찾기
+      int todayStartIndex = -1;
+      int todayEndIndex = lines.length;
+
+      for (int i = 0; i < lines.length; i++) {
+        if (lines[i].contains(todayDateStr) && lines[i].contains('─')) {
+          todayStartIndex = i;
+        } else if (todayStartIndex != -1 && lines[i].contains('월') && lines[i].contains('일') && lines[i].contains('─')) {
+          todayEndIndex = i;
+          break;
+        }
+      }
+
+      String todayContent = '';
+      if (todayStartIndex == -1) {
+        // 오늘 날짜 구분선이 없으면 전체가 오늘 메모
+        todayContent = _controller.text.trim();
+      } else {
+        // 오늘 날짜 구분선 다음부터 다음 날짜 구분선 전까지
+        final contentLines = lines.sublist(todayStartIndex + 1, todayEndIndex);
+        todayContent = contentLines.join('\n').trim();
+      }
+
+      if (todayContent.isNotEmpty) {
+        await _memoService.saveMemo(userId, today, todayContent);
+      }
 
       setState(() {
-        _editingMemoId = null;
+        _isEditMode = false;
       });
 
       await _loadMemos();
@@ -97,204 +126,110 @@ class _MemoScreenState extends State<MemoScreen> {
     }
   }
 
-  void _cancelEditing() {
+  void _toggleEditMode() {
     setState(() {
-      _editingMemoId = null;
+      _isEditMode = !_isEditMode;
+
+      if (_isEditMode) {
+        // 편집 모드로 전환
+        final today = DateTime.now();
+        final todayDateStr = DateFormat('M월 d일').format(today);
+
+        // 오늘 날짜 구분선이 없으면 추가
+        if (!_controller.text.contains(todayDateStr)) {
+          final newContent = '$todayDateStr ${'─' * 30}\n${_controller.text}';
+          _controller.text = newContent;
+          _controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: todayDateStr.length + 31), // 날짜 구분선 다음
+          );
+        } else {
+          // 오늘 날짜 구분선 다음으로 커서 이동
+          final lines = _controller.text.split('\n');
+          int cursorPosition = 0;
+          for (int i = 0; i < lines.length; i++) {
+            if (lines[i].contains(todayDateStr) && lines[i].contains('─')) {
+              cursorPosition = lines.sublist(0, i + 1).join('\n').length + 1;
+              break;
+            }
+          }
+          _controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: cursorPosition),
+          );
+        }
+
+        // 포커스
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _focusNode.requestFocus();
+        });
+      } else {
+        // 읽기 모드로 전환 (저장)
+        _saveMemo();
+      }
     });
-  }
-
-  void _createTodayMemo() {
-    final today = Memo.dateOnly(DateTime.now());
-    final dateKey = _getDateKey(today);
-
-    _getController(dateKey, '');
-    _startEditing(dateKey);
   }
 
   @override
   Widget build(BuildContext context) {
-    final userId = _authService.currentUser?.uid ?? '';
-    final today = Memo.dateOnly(DateTime.now());
-    final todayMemo = _memos.where((m) => Memo.dateOnly(m.date).isAtSameMomentAs(today)).firstOrNull;
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      body: Column(
+        children: [
+          // 상단 버튼 영역
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // 오늘 메모 섹션 (항상 표시)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.shade200,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                IconButton(
+                  icon: Icon(
+                    Icons.edit,
+                    color: _isEditMode ? Colors.blue : Colors.black87,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDateHeader(today, todayMemo),
-                      const SizedBox(height: 12),
-                      _buildMemoContent(today, todayMemo),
-                    ],
-                  ),
-                ),
-
-                // 이전 메모들 (스크롤)
-                Expanded(
-                  child: _memos.where((m) => Memo.dateOnly(m.date).isBefore(today)).isEmpty
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(32.0),
-                            child: Text(
-                              '이전 메모가 없습니다',
-                              style: TextStyle(color: Colors.grey, fontSize: 14),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _memos.where((m) => Memo.dateOnly(m.date).isBefore(today)).length,
-                          itemBuilder: (context, index) {
-                            final pastMemos = _memos.where((m) => Memo.dateOnly(m.date).isBefore(today)).toList();
-                            final memo = pastMemos[index];
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 24),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildDateHeader(memo.date, memo),
-                                  const SizedBox(height: 12),
-                                  _buildMemoContent(memo.date, memo),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                  onPressed: _toggleEditMode,
+                  tooltip: _isEditMode ? '저장' : '편집',
                 ),
               ],
             ),
-    );
-  }
+          ),
 
-  Widget _buildDateHeader(DateTime date, Memo? memo) {
-    final dateKey = _getDateKey(date);
-    final isEditing = _editingMemoId == dateKey;
-    final dateStr = DateFormat('M월 d일').format(date);
-
-    return Row(
-      children: [
-        Text(
-          dateStr,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: Colors.grey.shade300,
-          ),
-        ),
-        const SizedBox(width: 12),
-        if (isEditing)
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close, size: 20),
-                onPressed: _cancelEditing,
-                tooltip: '취소',
-                color: Colors.grey,
-              ),
-              IconButton(
-                icon: const Icon(Icons.save, size: 20),
-                onPressed: () {
-                  final controller = _getController(dateKey, memo?.content ?? '');
-                  _saveMemo(date, controller.text);
-                },
-                tooltip: '저장',
-                color: Colors.blue,
-              ),
-            ],
-          )
-        else
-          IconButton(
-            icon: const Icon(Icons.edit, size: 20),
-            onPressed: () {
-              final controller = _getController(dateKey, memo?.content ?? '');
-              _startEditing(dateKey);
-            },
-            tooltip: '편집',
-            color: Colors.blue,
-          ),
-      ],
-    );
-  }
-
-  Widget _buildMemoContent(DateTime date, Memo? memo) {
-    final dateKey = _getDateKey(date);
-    final isEditing = _editingMemoId == dateKey;
-    final controller = _getController(dateKey, memo?.content ?? '');
-
-    if (isEditing) {
-      return TextField(
-        controller: controller,
-        maxLines: null,
-        minLines: 3,
-        decoration: InputDecoration(
-          hintText: '자유롭게 메모를 작성하세요...',
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          filled: true,
-          fillColor: Colors.grey.shade50,
-        ),
-        style: const TextStyle(fontSize: 15, height: 1.5),
-        autofocus: true,
-      );
-    } else {
-      if (memo == null || memo.content.isEmpty) {
-        return GestureDetector(
-          onTap: () => _startEditing(dateKey),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: const Text(
-              '메모를 작성하려면 편집 버튼을 눌러주세요',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-          ),
-        );
-      } else {
-        return GestureDetector(
-          onTap: () => _startEditing(dateKey),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
+          // 메모 영역
+          Expanded(
+            child: Container(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Text(
-              memo.content,
-              style: const TextStyle(fontSize: 15, height: 1.5),
+              padding: const EdgeInsets.all(16),
+              child: _isEditMode
+                  ? TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      maxLines: null,
+                      expands: true,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: '',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        height: 1.6,
+                        color: Colors.black87,
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      child: Text(
+                        _controller.text.isEmpty ? '' : _controller.text,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
             ),
           ),
-        );
-      }
-    }
+        ],
+      ),
+    );
   }
 }
