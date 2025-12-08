@@ -80,27 +80,75 @@ class _MemoScreenState extends State<MemoScreen> {
   void _toggleEditMode() async {
     if (_isEditMode) {
       // 편집 모드 → 읽기 모드: 저장
+      final savedContent = _controller.text.trim();
       await _saveMemo();
-      setState(() {
-        _isEditMode = false;
-      });
+
+      // 저장 후 로컬 상태 업데이트 (네트워크 실패해도 UI에는 반영)
+      if (savedContent.isNotEmpty) {
+        final userId = _authService.currentUser?.uid ?? '';
+        final today = Memo.dateOnly(DateTime.now());
+        final now = DateTime.now();
+
+        // 기존 메모에서 오늘 메모 찾기
+        final existingIndex = _allMemos.indexWhere((m) =>
+          m.date.year == today.year &&
+          m.date.month == today.month &&
+          m.date.day == today.day
+        );
+
+        final newMemo = Memo(
+          id: existingIndex >= 0 ? _allMemos[existingIndex].id : '',
+          userId: userId,
+          date: today,
+          content: savedContent,
+          createdAt: existingIndex >= 0 ? _allMemos[existingIndex].createdAt : now,
+          updatedAt: now,
+        );
+
+        setState(() {
+          if (existingIndex >= 0) {
+            _allMemos[existingIndex] = newMemo;
+          } else {
+            _allMemos.insert(0, newMemo);
+          }
+          _isEditMode = false;
+        });
+      } else {
+        setState(() {
+          _isEditMode = false;
+        });
+      }
     } else {
       // 읽기 모드 → 편집 모드: 오늘 메모만 로드
       try {
         final userId = _authService.currentUser?.uid ?? '';
         final today = Memo.dateOnly(DateTime.now());
-        final todayMemo = await _memoService.getMemoByDate(userId, today);
+
+        // 로컬에서 먼저 찾기
+        final localMemo = _allMemos.firstWhere(
+          (m) => m.date.year == today.year &&
+                 m.date.month == today.month &&
+                 m.date.day == today.day,
+          orElse: () => Memo(
+            id: '',
+            userId: userId,
+            date: today,
+            content: '',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
 
         setState(() {
           _isEditMode = true;
-          _controller.text = todayMemo?.content ?? '';
+          _controller.text = localMemo.content;
         });
 
-        // 커서를 맨 위로
+        // 커서를 맨 끝으로
         Future.delayed(const Duration(milliseconds: 100), () {
           _focusNode.requestFocus();
           _controller.selection = TextSelection.fromPosition(
-            const TextPosition(offset: 0),
+            TextPosition(offset: _controller.text.length),
           );
         });
       } catch (e) {
