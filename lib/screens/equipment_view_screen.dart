@@ -469,7 +469,7 @@ class EquipmentDateLogsScreen extends StatelessWidget {
   }
 }
 
-// 모든 설비 그리드 화면
+// 모든 설비 리스트 화면
 class AllEquipmentsScreen extends StatelessWidget {
   final List<String> equipmentNames;
 
@@ -478,65 +478,104 @@ class AllEquipmentsScreen extends StatelessWidget {
     required this.equipmentNames,
   });
 
+  // 설비명을 파싱하여 정렬 키 생성
+  List<int> _parseEquipmentForSort(String name) {
+    final pattern = RegExp(r'^([A-Z]+)-?(\d+)([A-Z0-9]*)$');
+    final match = pattern.firstMatch(name);
+
+    if (match != null) {
+      final prefix = match.group(1)!;  // RE, AB 등
+      final number = int.tryParse(match.group(2)!) ?? 0;  // 8501
+      final suffix = match.group(3) ?? '';  // A1, B1 등
+
+      // prefix를 숫자로 변환 (A=1, B=2, ...)
+      int prefixValue = 0;
+      for (int i = 0; i < prefix.length; i++) {
+        prefixValue = prefixValue * 26 + (prefix.codeUnitAt(i) - 64);
+      }
+
+      // suffix를 숫자로 변환
+      int suffixValue = 0;
+      for (int i = 0; i < suffix.length; i++) {
+        final char = suffix.codeUnitAt(i);
+        if (char >= 65 && char <= 90) {  // A-Z
+          suffixValue = suffixValue * 36 + (char - 64);
+        } else if (char >= 48 && char <= 57) {  // 0-9
+          suffixValue = suffixValue * 36 + (char - 48 + 27);
+        }
+      }
+
+      return [prefixValue, number, suffixValue];
+    }
+
+    // 파싱 실패 시 문자열 그대로
+    return [0, 0, 0];
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 설비명 정렬
+    final sortedNames = List<String>.from(equipmentNames);
+    sortedNames.sort((a, b) {
+      final aKeys = _parseEquipmentForSort(a);
+      final bKeys = _parseEquipmentForSort(b);
+
+      // prefix 비교
+      if (aKeys[0] != bKeys[0]) return aKeys[0].compareTo(bKeys[0]);
+      // number 비교
+      if (aKeys[1] != bKeys[1]) return aKeys[1].compareTo(bKeys[1]);
+      // suffix 비교
+      return aKeys[2].compareTo(bKeys[2]);
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('설비 조회'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
       ),
-      body: GridView.builder(
+      body: ListView.builder(
         padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          childAspectRatio: 1.5,
-        ),
-        itemCount: equipmentNames.length,
+        itemCount: sortedNames.length,
         itemBuilder: (context, index) {
-          final equipmentName = equipmentNames[index];
-          return InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EquipmentHistoryScreen(
-                    equipmentName: equipmentName,
-                  ),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade300, Colors.blue.shade500],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    equipmentName,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+          final equipmentName = sortedNames[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EquipmentHistoryScreen(
+                      equipmentName: equipmentName,
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade300, Colors.blue.shade500],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                child: Text(
+                  equipmentName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
                 ),
               ),
             ),
