@@ -367,7 +367,13 @@ class _EditLogScreenState extends State<EditLogScreen> {
                                   : FutureBuilder<int>(
                                       future: mediaFile.length(),
                                       builder: (context, snapshot) {
-                                        final fileName = mediaFile.path.split('/').last;
+                                        final pathParts = mediaFile.path.split('/');
+                                        final fileName = pathParts.isNotEmpty ? pathParts.last : '동영상';
+                                        final displayName = fileName.isEmpty
+                                            ? '동영상'
+                                            : (fileName.length > 12
+                                                ? '${fileName.substring(0, 12)}...'
+                                                : fileName);
                                         final fileSize = snapshot.hasData
                                             ? (snapshot.data! / (1024 * 1024)).toStringAsFixed(1)
                                             : '...';
@@ -379,12 +385,11 @@ class _EditLogScreenState extends State<EditLogScreen> {
                                               const Icon(Icons.videocam, size: 30, color: Colors.blue),
                                               const SizedBox(height: 4),
                                               Text(
-                                                fileName.length > 12
-                                                    ? '${fileName.substring(0, 12)}...'
-                                                    : fileName,
+                                                displayName,
                                                 style: const TextStyle(fontSize: 10),
                                                 textAlign: TextAlign.center,
                                                 overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                               ),
                                               Text(
                                                 '$fileSize MB',
