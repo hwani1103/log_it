@@ -367,15 +367,12 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
       ),
     );
 
-    // 날짜별 조회에서 온 경우 Scaffold로 감싸기
+    // 날짜별 조회에서 온 경우 Scaffold로 감싸기 (SafeArea 적용)
     if (widget.selectedDate != null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text('일지 작성 (${DateFormat('MM월 dd일').format(widget.selectedDate!)})'),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
+        body: SafeArea(
+          child: content,
         ),
-        body: content,
       );
     }
 
