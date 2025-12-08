@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/work_log.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 import 'work_log_detail_screen.dart';
 import 'create_log_screen.dart';
 
@@ -157,7 +158,7 @@ class _DateViewScreenState extends State<DateViewScreen> {
   }
 }
 
-class DateLogsList extends StatelessWidget {
+class DateLogsList extends StatefulWidget {
   final DateTime date;
 
   const DateLogsList({
@@ -166,13 +167,101 @@ class DateLogsList extends StatelessWidget {
   });
 
   @override
+  State<DateLogsList> createState() => _DateLogsListState();
+}
+
+class _DateLogsListState extends State<DateLogsList> {
+  bool _isSelectionMode = false;
+  final Set<String> _selectedIds = {};
+
+  void _toggleSelectionMode() {
+    setState(() {
+      _isSelectionMode = !_isSelectionMode;
+      if (!_isSelectionMode) {
+        _selectedIds.clear();
+      }
+    });
+  }
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  Future<void> _deleteSelectedLogs(List<WorkLog> workLogs) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('일지 삭제'),
+        content: Text('선택한 ${_selectedIds.length}개의 일지를 삭제하시겠습니까?\n첨부파일도 함께 삭제됩니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        final firestoreService = FirestoreService();
+        final storageService = StorageService();
+
+        // 선택된 일지들 찾기
+        final logsToDelete = workLogs.where((log) => _selectedIds.contains(log.id)).toList();
+
+        for (final log in logsToDelete) {
+          // 미디어 파일 삭제
+          for (final mediaUrl in log.mediaUrls) {
+            try {
+              await storageService.deleteMedia(mediaUrl);
+            } catch (e) {
+              print('미디어 삭제 실패: $e');
+            }
+          }
+
+          // Firestore에서 일지 삭제
+          await firestoreService.deleteWorkLog(log.id);
+        }
+
+        if (mounted) {
+          setState(() {
+            _isSelectionMode = false;
+            _selectedIds.clear();
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${logsToDelete.length}개의 일지가 삭제되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('삭제 실패: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
     final FirestoreService firestoreService = FirestoreService();
     final userId = authService.currentUser?.uid ?? '';
 
     return StreamBuilder<List<WorkLog>>(
-      stream: firestoreService.getWorkLogsByDate(userId, date),
+      stream: firestoreService.getWorkLogsByDate(userId, widget.date),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -192,7 +281,7 @@ class DateLogsList extends StatelessWidget {
                 Icon(Icons.event_note, size: 80, color: Colors.grey.shade300),
                 const SizedBox(height: 16),
                 Text(
-                  '${DateFormat('MM월 dd일').format(date)}에\n작성된 일지가 없습니다',
+                  '${DateFormat('MM월 dd일').format(widget.date)}에\n작성된 일지가 없습니다',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -204,98 +293,170 @@ class DateLogsList extends StatelessWidget {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: workLogs.length,
-          itemBuilder: (context, index) {
-            final log = workLogs[index];
-
-            // 내용 미리보기
-            final preview = log.content.length > 80
-                ? '${log.content.substring(0, 80)}...'
-                : log.content;
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WorkLogDetailScreen(
-                        workLog: log,
-                        showEquipmentFirst: false,
+        return Column(
+          children: [
+            // 다중 선택 모드 헤더
+            if (_isSelectionMode)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.blue.shade100,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${_selectedIds.length}개 선택됨',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            log.equipmentName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            DateFormat('HH:mm').format(log.createdAt),
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        preview.isNotEmpty ? preview : '내용 없음',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade700,
-                          height: 1.4,
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: _toggleSelectionMode,
+                          child: const Text('취소'),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (log.mediaUrls.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.attach_file,
-                              size: 16,
-                              color: Colors.grey.shade600,
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _selectedIds.isEmpty
+                              ? null
+                              : () => _deleteSelectedLogs(workLogs),
+                          icon: const Icon(Icons.delete, size: 18),
+                          label: const Text('삭제'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: workLogs.length,
+                itemBuilder: (context, index) {
+                  final log = workLogs[index];
+                  final isSelected = _selectedIds.contains(log.id);
+
+                  // 내용 미리보기
+                  final preview = log.content.length > 80
+                      ? '${log.content.substring(0, 80)}...'
+                      : log.content;
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 2,
+                    color: isSelected ? Colors.blue.shade50 : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        if (_isSelectionMode) {
+                          _toggleSelection(log.id);
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WorkLogDetailScreen(
+                                workLog: log,
+                                showEquipmentFirst: false,
+                              ),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '첨부 ${log.mediaUrls.length}개',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade600,
+                          );
+                        }
+                      },
+                      onLongPress: () {
+                        if (!_isSelectionMode) {
+                          setState(() {
+                            _isSelectionMode = true;
+                            _selectedIds.add(log.id);
+                          });
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            // 체크박스 (다중 선택 모드일 때만)
+                            if (_isSelectionMode) ...[
+                              Checkbox(
+                                value: isSelected,
+                                onChanged: (value) => _toggleSelection(log.id),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        log.equipmentName,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      Text(
+                                        DateFormat('HH:mm').format(log.createdAt),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    preview.isNotEmpty ? preview : '내용 없음',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade700,
+                                      height: 1.4,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (log.mediaUrls.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.attach_file,
+                                          size: 16,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '첨부 ${log.mediaUrls.length}개',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ],
         );
       },
     );
