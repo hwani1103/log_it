@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#2196F3"/>
+
+  <!-- Document/Paper shape -->
+  <rect x="140" y="100" width="232" height="312" rx="16" fill="white"/>
+
+  <!-- Lines representing text -->
+  <rect x="180" y="160" width="152" height="12" rx="6" fill="#E3F2FD"/>
+  <rect x="180" y="200" width="152" height="12" rx="6" fill="#E3F2FD"/>
+  <rect x="180" y="240" width="152" height="12" rx="6" fill="#E3F2FD"/>
+  <rect x="180" y="280" width="120" height="12" rx="6" fill="#E3F2FD"/>
+
+  <!-- Checkmark icon in circle -->
+  <circle cx="256" cy="340" r="50" fill="#4CAF50"/>
+  <path d="M 236 340 L 248 352 L 276 324" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Pen icon -->
+  <g transform="translate(340, 140) rotate(45)">
+    <rect x="-8" y="-30" width="16" height="60" rx="4" fill="#FF9800"/>
+    <polygon points="-8,30 8,30 0,45" fill="#F57C00"/>
+  </g>
+</svg>

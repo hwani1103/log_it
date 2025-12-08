@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Log.it Logo Generator</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            background: white;
+            margin: 20px;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .info {
+            margin-top: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Log.it 로고 생성기</h1>
+        <canvas id="canvas" width="512" height="512"></canvas>
+        <div>
+            <button onclick="downloadLogo()">로고 다운로드 (PNG)</button>
+        </div>
+        <div class="info">
+            <p>이 로고를 다운로드한 후:</p>
+            <p>1. 파일 이름을 <strong>logo.png</strong>로 저장</p>
+            <p>2. <strong>log_it/assets/</strong> 폴더에 복사</p>
+            <p>3. 터미널에서 <code>flutter pub get</code> 실행</p>
+            <p>4. <code>dart run flutter_launcher_icons</code> 실행</p>
+            <p>5. <code>dart run flutter_native_splash:create</code> 실행</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function drawLogo() {
+            // 배경 원
+            ctx.fillStyle = '#2196F3';
+            ctx.beginPath();
+            ctx.arc(256, 256, 240, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 문서 모양
+            ctx.fillStyle = 'white';
+            roundRect(ctx, 140, 100, 232, 312, 16);
+
+            // 텍스트 라인들
+            ctx.fillStyle = '#E3F2FD';
+            roundRect(ctx, 180, 160, 152, 12, 6);
+            roundRect(ctx, 180, 200, 152, 12, 6);
+            roundRect(ctx, 180, 240, 152, 12, 6);
+            roundRect(ctx, 180, 280, 120, 12, 6);
+
+            // 체크마크 원
+            ctx.fillStyle = '#4CAF50';
+            ctx.beginPath();
+            ctx.arc(256, 340, 50, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 체크마크
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(236, 340);
+            ctx.lineTo(248, 352);
+            ctx.lineTo(276, 324);
+            ctx.stroke();
+
+            // 펜 아이콘
+            ctx.save();
+            ctx.translate(340, 140);
+            ctx.rotate(Math.PI / 4);
+
+            // 펜 몸통
+            ctx.fillStyle = '#FF9800';
+            roundRect(ctx, -8, -30, 16, 60, 4);
+
+            // 펜 끝
+            ctx.fillStyle = '#F57C00';
+            ctx.beginPath();
+            ctx.moveTo(-8, 30);
+            ctx.lineTo(8, 30);
+            ctx.lineTo(0, 45);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function downloadLogo() {
+            const link = document.createElement('a');
+            link.download = 'logo.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // 로고 그리기
+        drawLogo();
+    </script>
+</body>
+</html>
