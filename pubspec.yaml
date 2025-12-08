@@ -57,6 +57,7 @@ dependencies:
   # 유틸리티
   uuid: ^4.5.1
   permission_handler: ^11.3.1
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:

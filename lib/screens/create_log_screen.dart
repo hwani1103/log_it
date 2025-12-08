@@ -6,6 +6,7 @@ import '../models/work_log.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../services/equipment_alias_service.dart';
 import 'work_log_detail_screen.dart';
 
 class CreateLogScreen extends StatefulWidget {
@@ -24,11 +25,18 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final StorageService _storageService = StorageService();
+  final EquipmentAliasService _aliasService = EquipmentAliasService();
   final ImagePicker _picker = ImagePicker();
 
   final List<File> _mediaFiles = [];
   final List<String> _mediaTypes = [];
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _aliasService.loadRules();
+  }
 
   @override
   void dispose() {
@@ -106,15 +114,50 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
 
   String _parseEquipmentName(String input) {
     final trimmed = input.trim().toUpperCase();
-    // 패턴: 영어2글자 + (하이픈 선택) + 숫자4개 + 알파벳1개(선택)
-    final pattern = RegExp(r'^([A-Z]{2})-?(\d{4})([A-Z]?)$');
-    final match = pattern.firstMatch(trimmed);
 
-    if (match != null) {
-      final prefix = match.group(1)!;      // 예: RE
-      final numbers = match.group(2)!;     // 예: 8501
-      final suffix = match.group(3) ?? ''; // 예: A (선택적)
-      return '$prefix-$numbers$suffix';    // RE-8501A
+    // 패턴 1: 영어2글자 + (하이픈 선택) + 숫자4개 + 알파벳1개(선택)
+    final pattern2Digit = RegExp(r'^([A-Z]{2})-?(\d{4})([A-Z]?)$');
+    final match2 = pattern2Digit.firstMatch(trimmed);
+
+    if (match2 != null) {
+      var prefix = match2.group(1)!;       // 예: LI
+      final numbers = match2.group(2)!;     // 예: 8504
+      final suffix = match2.group(3) ?? ''; // 예: A (선택적)
+
+      // Alias 서비스를 통해 표준 prefix로 변환
+      prefix = _aliasService.getStandardPrefix(prefix);
+
+      return '$prefix-$numbers$suffix';    // LIA-8504A
+    }
+
+    // 패턴 2: 영어3글자 + (하이픈 선택) + 숫자4개 + 알파벳1개(선택)
+    final pattern3Digit = RegExp(r'^([A-Z]{3})-?(\d{4})([A-Z]?)$');
+    final match3 = pattern3Digit.firstMatch(trimmed);
+
+    if (match3 != null) {
+      var prefix = match3.group(1)!;
+      final numbers = match3.group(2)!;
+      final suffix = match3.group(3) ?? '';
+
+      // Alias 서비스를 통해 표준 prefix로 변환
+      prefix = _aliasService.getStandardPrefix(prefix);
+
+      return '$prefix-$numbers$suffix';
+    }
+
+    // 패턴 3: 영어4글자+ + (하이픈 선택) + 숫자4개 + 알파벳1개(선택)
+    final pattern4Plus = RegExp(r'^([A-Z]{4,})-?(\d{4})([A-Z]?)$');
+    final match4 = pattern4Plus.firstMatch(trimmed);
+
+    if (match4 != null) {
+      var prefix = match4.group(1)!;
+      final numbers = match4.group(2)!;
+      final suffix = match4.group(3) ?? '';
+
+      // Alias 서비스를 통해 표준 prefix로 변환
+      prefix = _aliasService.getStandardPrefix(prefix);
+
+      return '$prefix-$numbers$suffix';
     }
 
     // 패턴에 맞지 않으면 그냥 대문자로 반환

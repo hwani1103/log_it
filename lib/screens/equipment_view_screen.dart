@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 import '../models/work_log.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/equipment_alias_service.dart';
 import 'work_log_detail_screen.dart';
+import 'equipment_alias_settings_screen.dart';
 
 class EquipmentViewScreen extends StatefulWidget {
   const EquipmentViewScreen({super.key});
@@ -15,6 +17,13 @@ class EquipmentViewScreen extends StatefulWidget {
 class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
+  final EquipmentAliasService _aliasService = EquipmentAliasService();
+
+  @override
+  void initState() {
+    super.initState();
+    _aliasService.loadRules();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,29 +66,52 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
 
         return Column(
           children: [
-            // 설비 조회 버튼
+            // 상단 헤더
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               color: Colors.blue.shade50,
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AllEquipmentsScreen(
-                          equipmentNames: allEquipmentNames,
-                        ),
+              child: Row(
+                children: [
+                  // 설비 조회 버튼
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AllEquipmentsScreen(
+                              equipmentNames: allEquipmentNames,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.search, size: 18),
+                      label: const Text('설비 조회'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.settings, size: 18),
-                  label: const Text('설비 조회'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  // 설정 아이콘
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EquipmentAliasSettingsScreen(
+                            aliasService: _aliasService,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.settings),
+                    color: Colors.blue,
+                    tooltip: '설비명 변환 규칙',
+                  ),
+                ],
               ),
             ),
             Expanded(
