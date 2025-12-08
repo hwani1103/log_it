@@ -43,7 +43,9 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
 
   void _initializeVideoPlayers() {
     for (int i = 0; i < widget.workLog.mediaUrls.length; i++) {
-      if (widget.workLog.mediaTypes[i] == 'video') {
+      // mediaTypes 배열 길이 체크
+      if (i < widget.workLog.mediaTypes.length &&
+          widget.workLog.mediaTypes[i] == 'video') {
         final controller = VideoPlayerController.networkUrl(
           Uri.parse(widget.workLog.mediaUrls[i]),
         )..initialize().then((_) {
@@ -131,7 +133,8 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
             iconTheme: const IconThemeData(color: Colors.white),
           ),
           body: Center(
-            child: widget.workLog.mediaTypes[index] == 'image'
+            child: (index < widget.workLog.mediaTypes.length &&
+                    widget.workLog.mediaTypes[index] == 'image')
                 ? InteractiveViewer(
                     child: CachedNetworkImage(
                       imageUrl: widget.workLog.mediaUrls[index],
@@ -151,8 +154,9 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                       )
                     : const CircularProgressIndicator(),
           ),
-          floatingActionButton: widget.workLog.mediaTypes[index] == 'video' &&
-                  _videoControllers[index] != null
+          floatingActionButton: (index < widget.workLog.mediaTypes.length &&
+                  widget.workLog.mediaTypes[index] == 'video' &&
+                  _videoControllers[index] != null)
               ? FloatingActionButton(
                   onPressed: () {
                     setState(() {
@@ -332,7 +336,8 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                           onTap: () => _showMediaFullScreen(index),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: widget.workLog.mediaTypes[index] == 'image'
+                            child: (index < widget.workLog.mediaTypes.length &&
+                                    widget.workLog.mediaTypes[index] == 'image')
                                 ? CachedNetworkImage(
                                     imageUrl: widget.workLog.mediaUrls[index],
                                     cacheKey: CacheHelper.getStableCacheKey(widget.workLog.mediaUrls[index]),
