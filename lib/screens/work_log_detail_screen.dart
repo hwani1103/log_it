@@ -357,29 +357,15 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
             // 작업 내용
             Padding(
               padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '작업내용',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.workLog.content.isNotEmpty
-                        ? widget.workLog.content
-                        : '내용 없음',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      height: 1.6,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
+              child: Text(
+                widget.workLog.content.isNotEmpty
+                    ? widget.workLog.content
+                    : '내용 없음',
+                style: const TextStyle(
+                  fontSize: 17,
+                  height: 1.6,
+                  color: Colors.black87,
+                ),
               ),
             ),
 
