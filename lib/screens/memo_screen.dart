@@ -20,6 +20,8 @@ class _MemoScreenState extends State<MemoScreen> {
   List<Memo> _allMemos = [];
   bool _isLoading = true;
   bool _isEditMode = false;
+  DateTime? _selectedDate; // 읽기 모드에서 선택된 날짜 (수정/삭제 버튼 표시용)
+  DateTime? _editingDate; // 편집 모드에서 편집 중인 날짜
 
   @override
   void initState() {
@@ -54,11 +56,11 @@ class _MemoScreenState extends State<MemoScreen> {
   Future<void> _saveMemo() async {
     try {
       final userId = _authService.currentUser?.uid ?? '';
-      final today = Memo.dateOnly(DateTime.now());
+      final dateToSave = _editingDate ?? Memo.dateOnly(DateTime.now());
       final content = _controller.text.trim();
 
       if (content.isNotEmpty) {
-        await _memoService.saveMemo(userId, today, content);
+        await _memoService.saveMemo(userId, dateToSave, content);
       }
 
       await _loadMemos();
@@ -77,7 +79,66 @@ class _MemoScreenState extends State<MemoScreen> {
     }
   }
 
-  void _toggleEditMode() async {
+  Future<void> _deleteMemo(DateTime date) async {
+    // 확인 다이얼로그
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('메모 삭제'),
+        content: Text('${DateFormat('M월 d일').format(date)} 메모를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // 로컬에서 찾기
+      final memoToDelete = _allMemos.firstWhere(
+        (m) => m.date.year == date.year &&
+               m.date.month == date.month &&
+               m.date.day == date.day,
+      );
+
+      // Firebase에서 삭제
+      if (memoToDelete.id.isNotEmpty) {
+        await _memoService.deleteMemo(memoToDelete.id);
+      }
+
+      // 로컬 상태 업데이트
+      setState(() {
+        _allMemos.removeWhere((m) =>
+          m.date.year == date.year &&
+          m.date.month == date.month &&
+          m.date.day == date.day
+        );
+        _selectedDate = null;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('메모가 삭제되었습니다')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('삭제 실패: $e')),
+        );
+      }
+    }
+  }
+
+  void _toggleEditMode([DateTime? dateToEdit]) async {
     if (_isEditMode) {
       // 편집 모드 → 읽기 모드: 저장
       final savedContent = _controller.text.trim();
@@ -86,20 +147,20 @@ class _MemoScreenState extends State<MemoScreen> {
       // 저장 후 로컬 상태 업데이트 (네트워크 실패해도 UI에는 반영)
       if (savedContent.isNotEmpty) {
         final userId = _authService.currentUser?.uid ?? '';
-        final today = Memo.dateOnly(DateTime.now());
+        final dateToSave = _editingDate ?? Memo.dateOnly(DateTime.now());
         final now = DateTime.now();
 
-        // 기존 메모에서 오늘 메모 찾기
+        // 기존 메모에서 해당 날짜 메모 찾기
         final existingIndex = _allMemos.indexWhere((m) =>
-          m.date.year == today.year &&
-          m.date.month == today.month &&
-          m.date.day == today.day
+          m.date.year == dateToSave.year &&
+          m.date.month == dateToSave.month &&
+          m.date.day == dateToSave.day
         );
 
         final newMemo = Memo(
           id: existingIndex >= 0 ? _allMemos[existingIndex].id : '',
           userId: userId,
-          date: today,
+          date: dateToSave,
           content: savedContent,
           createdAt: existingIndex >= 0 ? _allMemos[existingIndex].createdAt : now,
           updatedAt: now,
@@ -112,27 +173,31 @@ class _MemoScreenState extends State<MemoScreen> {
             _allMemos.insert(0, newMemo);
           }
           _isEditMode = false;
+          _editingDate = null;
+          _selectedDate = null;
         });
       } else {
         setState(() {
           _isEditMode = false;
+          _editingDate = null;
+          _selectedDate = null;
         });
       }
     } else {
-      // 읽기 모드 → 편집 모드: 오늘 메모만 로드
+      // 읽기 모드 → 편집 모드
       try {
         final userId = _authService.currentUser?.uid ?? '';
-        final today = Memo.dateOnly(DateTime.now());
+        final targetDate = dateToEdit ?? Memo.dateOnly(DateTime.now());
 
         // 로컬에서 먼저 찾기
         final localMemo = _allMemos.firstWhere(
-          (m) => m.date.year == today.year &&
-                 m.date.month == today.month &&
-                 m.date.day == today.day,
+          (m) => m.date.year == targetDate.year &&
+                 m.date.month == targetDate.month &&
+                 m.date.day == targetDate.day,
           orElse: () => Memo(
             id: '',
             userId: userId,
-            date: today,
+            date: targetDate,
             content: '',
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
@@ -141,6 +206,8 @@ class _MemoScreenState extends State<MemoScreen> {
 
         setState(() {
           _isEditMode = true;
+          _editingDate = targetDate;
+          _selectedDate = null;
           _controller.text = localMemo.content;
         });
 
@@ -238,18 +305,58 @@ class _MemoScreenState extends State<MemoScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: _allMemos.map((memo) {
           final dateStr = DateFormat('M월 d일').format(memo.date);
+          final isSelected = _selectedDate != null &&
+              _selectedDate!.year == memo.date.year &&
+              _selectedDate!.month == memo.date.month &&
+              _selectedDate!.day == memo.date.day;
+
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 날짜 구분선
-                Text(
-                  '$dateStr ${'─' * 30}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Colors.black54,
-                    fontWeight: FontWeight.w500,
+                // 날짜 구분선 (탭 가능)
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedDate = null; // 선택 해제
+                      } else {
+                        _selectedDate = memo.date; // 선택
+                      }
+                    });
+                  },
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '$dateStr ${'─' * 30}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: isSelected ? Colors.blue : Colors.black54,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      // 선택된 경우 수정/삭제 버튼 표시
+                      if (isSelected) ...[
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () => _toggleEditMode(memo.date),
+                          tooltip: '수정',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                          onPressed: () => _deleteMemo(memo.date),
+                          tooltip: '삭제',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
