@@ -456,6 +456,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
