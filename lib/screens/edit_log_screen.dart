@@ -254,22 +254,22 @@ class _EditLogScreenState extends State<EditLogScreen> {
         title: const Text('일지 수정'),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _equipmentController,
-                decoration: const InputDecoration(
-                  labelText: '설비명',
-                  border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _equipmentController,
+                  decoration: const InputDecoration(
+                    labelText: '설비명',
+                    border: OutlineInputBorder(),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
                 ),
-                textCapitalization: TextCapitalization.characters,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: TextField(
+                const SizedBox(height: 16),
+                TextField(
                   controller: _contentController,
                   decoration: const InputDecoration(
                     labelText: '작업 내용',
@@ -277,11 +277,10 @@ class _EditLogScreenState extends State<EditLogScreen> {
                     alignLabelWithHint: true,
                   ),
                   maxLines: null,
-                  expands: true,
+                  minLines: 8,
                   textAlignVertical: TextAlignVertical.top,
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
               // 기존 미디어 + 새로 추가한 미디어 표시
               if (_existingMediaUrls.isNotEmpty || _newMediaFiles.isNotEmpty)
@@ -311,15 +310,22 @@ class _EditLogScreenState extends State<EditLogScreen> {
                               child: mediaType == 'image'
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
-                                      child: CachedNetworkImage(
-                                        imageUrl: mediaUrl,
-                                        cacheKey: CacheHelper.getStableCacheKey(mediaUrl),
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) => const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                        errorWidget: (context, url, error) =>
-                                          const Icon(Icons.error),
+                                      child: FutureBuilder<File>(
+                                        future: CacheHelper().getCachedImageFile(mediaUrl),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.hasError) {
+                                            return const Center(child: Icon(Icons.error));
+                                          }
+                                          if (!snapshot.hasData) {
+                                            return const Center(child: CircularProgressIndicator());
+                                          }
+                                          return Image.file(
+                                            snapshot.data!,
+                                            fit: BoxFit.cover,
+                                            width: 100,
+                                            height: 100,
+                                          );
+                                        },
                                       ),
                                     )
                                   : Padding(
