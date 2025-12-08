@@ -47,8 +47,8 @@ class MemoService {
 
     final memos = snapshot.docs.map((doc) => Memo.fromFirestore(doc)).toList();
 
-    // 클라이언트에서 날짜 내림차순 정렬
-    memos.sort((a, b) => b.date.compareTo(a.date));
+    // 클라이언트에서 날짜 오름차순 정렬 (오래된 날짜가 위에)
+    memos.sort((a, b) => a.date.compareTo(b.date));
 
     return memos;
   }
