@@ -28,12 +28,6 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
   final Map<int, VideoPlayerController> _videoControllers = {};
 
   @override
-  void initState() {
-    super.initState();
-    _initializeVideoPlayers();
-  }
-
-  @override
   void dispose() {
     for (var controller in _videoControllers.values) {
       controller.dispose();
@@ -41,18 +35,19 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
     super.dispose();
   }
 
-  void _initializeVideoPlayers() {
-    for (int i = 0; i < widget.workLog.mediaUrls.length; i++) {
-      // mediaTypes 배열 길이 체크
-      if (i < widget.workLog.mediaTypes.length &&
-          widget.workLog.mediaTypes[i] == 'video') {
-        final controller = VideoPlayerController.networkUrl(
-          Uri.parse(widget.workLog.mediaUrls[i]),
-        )..initialize().then((_) {
-            if (mounted) setState(() {});
-          });
-        _videoControllers[i] = controller;
-      }
+  void _initializeVideoPlayer(int index) {
+    if (_videoControllers.containsKey(index)) {
+      return; // 이미 초기화됨
+    }
+
+    if (index < widget.workLog.mediaTypes.length &&
+        widget.workLog.mediaTypes[index] == 'video') {
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.workLog.mediaUrls[index]),
+      )..initialize().then((_) {
+          if (mounted) setState(() {});
+        });
+      _videoControllers[index] = controller;
     }
   }
 
@@ -123,6 +118,12 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
   }
 
   void _showMediaFullScreen(int index) {
+    // 동영상인 경우 클릭 시 초기화 (네트워크 사용량 절감)
+    if (index < widget.workLog.mediaTypes.length &&
+        widget.workLog.mediaTypes[index] == 'video') {
+      _initializeVideoPlayer(index);
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -354,29 +355,16 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                                       child: const Icon(Icons.error),
                                     ),
                                   )
-                                : _videoControllers[index] != null &&
-                                        _videoControllers[index]!
-                                            .value
-                                            .isInitialized
-                                    ? Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          VideoPlayer(_videoControllers[index]!),
-                                          const Center(
-                                            child: Icon(
-                                              Icons.play_circle_outline,
-                                              size: 50,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : Container(
-                                        color: Colors.grey.shade200,
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
+                                : Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.play_circle_outline,
+                                        size: 50,
+                                        color: Colors.blue,
                                       ),
+                                    ),
+                                  ),
                           ),
                         );
                       },
