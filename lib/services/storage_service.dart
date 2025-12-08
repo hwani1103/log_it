@@ -14,11 +14,12 @@ class StorageService {
       final fileSize = await file.length();
       final fileSizeMB = fileSize / (1024 * 1024);
 
-      print('=== Upload Start ===');
-      print('Type: $mediaType');
-      print('Path: ${file.path}');
-      print('Size: ${fileSizeMB.toStringAsFixed(2)} MB ($fileSize bytes)');
-      print('Destination: users/$userId/$fileName');
+      print('=============== 네트워크 요청!! ===============');
+      print('📤 [Storage] 파일 업로드 시작');
+      print('타입: $mediaType');
+      print('크기: ${fileSizeMB.toStringAsFixed(2)} MB');
+      print('경로: users/$userId/$fileName');
+      print('===========================================');
 
       // Firebase Storage에 메타데이터와 함께 업로드
       final metadata = SettableMetadata(
@@ -30,33 +31,35 @@ class StorageService {
         },
       );
 
-      print('Starting upload...');
       final uploadTask = await ref.putFile(file, metadata);
-
-      print('Upload task completed, getting download URL...');
       final downloadUrl = await uploadTask.ref.getDownloadURL();
 
-      print('=== Upload Success ===');
-      print('URL: $downloadUrl');
-      print('===================');
+      print('✅ [Storage] 업로드 완료 (${fileSizeMB.toStringAsFixed(2)} MB)');
 
       return downloadUrl;
     } catch (e, stackTrace) {
-      print('=== Upload Error ===');
-      print('Type: $mediaType');
-      print('Error: $e');
-      print('Stack trace: $stackTrace');
-      print('===================');
+      print('❌ [Storage] 업로드 실패');
+      print('타입: $mediaType');
+      print('에러: $e');
+      print('===========================================');
       rethrow;
     }
   }
 
   Future<void> deleteMedia(String url) async {
     try {
+      print('=============== 네트워크 요청!! ===============');
+      print('🗑️ [Storage] 파일 삭제');
+      print('URL: $url');
+      print('===========================================');
+
       final ref = _storage.refFromURL(url);
       await ref.delete();
+
+      print('✅ [Storage] 파일 삭제 완료');
     } catch (e) {
-      print('Delete Error: $e');
+      print('❌ [Storage] 삭제 실패: $e');
+      print('===========================================');
     }
   }
 
