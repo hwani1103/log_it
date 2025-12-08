@@ -32,7 +32,7 @@ class MemoService {
     return Memo.fromFirestore(snapshot.docs.first);
   }
 
-  // 모든 메모 가져오기 (날짜 내림차순)
+  // 모든 메모 가져오기 (클라이언트에서 날짜 내림차순 정렬)
   Future<List<Memo>> getAllMemos(String userId) async {
     print('=============== 네트워크 요청!! ===============');
     print('📡 [Firestore] 전체 메모 조회');
@@ -41,12 +41,16 @@ class MemoService {
     final snapshot = await _firestore
         .collection(_collection)
         .where('userId', isEqualTo: userId)
-        .orderBy('date', descending: true)
         .get();
 
     print('✅ [Firestore] 메모 ${snapshot.docs.length}개 조회 완료');
 
-    return snapshot.docs.map((doc) => Memo.fromFirestore(doc)).toList();
+    final memos = snapshot.docs.map((doc) => Memo.fromFirestore(doc)).toList();
+
+    // 클라이언트에서 날짜 내림차순 정렬
+    memos.sort((a, b) => b.date.compareTo(a.date));
+
+    return memos;
   }
 
   // 메모 저장 (생성 또는 업데이트)
