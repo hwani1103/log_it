@@ -215,150 +215,152 @@ class _EditLogScreenState extends State<EditLogScreen> {
       appBar: AppBar(
         title: const Text('일지 수정'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _equipmentController,
-              decoration: const InputDecoration(
-                labelText: '설비명',
-                border: OutlineInputBorder(),
-              ),
-              textCapitalization: TextCapitalization.characters,
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: TextField(
-                controller: _contentController,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _equipmentController,
                 decoration: const InputDecoration(
-                  labelText: '작업 내용',
+                  labelText: '설비명',
                   border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
                 ),
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
+                textCapitalization: TextCapitalization.characters,
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              Expanded(
+                child: TextField(
+                  controller: _contentController,
+                  decoration: const InputDecoration(
+                    labelText: '작업 내용',
+                    border: OutlineInputBorder(),
+                    alignLabelWithHint: true,
+                  ),
+                  maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
+                ),
+              ),
+              const SizedBox(height: 16),
 
-            // 기존 미디어 + 새로 추가한 미디어 표시
-            if (_existingMediaUrls.isNotEmpty || _newMediaFiles.isNotEmpty)
-              SizedBox(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _existingMediaUrls.length + _newMediaFiles.length,
-                  itemBuilder: (context, index) {
-                    final isExisting = index < _existingMediaUrls.length;
+              // 기존 미디어 + 새로 추가한 미디어 표시
+              if (_existingMediaUrls.isNotEmpty || _newMediaFiles.isNotEmpty)
+                SizedBox(
+                  height: 100,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _existingMediaUrls.length + _newMediaFiles.length,
+                    itemBuilder: (context, index) {
+                      final isExisting = index < _existingMediaUrls.length;
 
-                    if (isExisting) {
-                      // 기존 미디어 (URL에서 로드)
-                      final mediaUrl = _existingMediaUrls[index];
-                      final mediaType = _existingMediaTypes[index];
+                      if (isExisting) {
+                        // 기존 미디어 (URL에서 로드)
+                        final mediaUrl = _existingMediaUrls[index];
+                        final mediaType = _existingMediaTypes[index];
 
-                      return Stack(
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: mediaType == 'image'
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: CachedNetworkImage(
-                                      imageUrl: mediaUrl,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => const Center(
-                                        child: CircularProgressIndicator(),
+                        return Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 100,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: mediaType == 'image'
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: mediaUrl,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) => const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                        errorWidget: (context, url, error) =>
+                                          const Icon(Icons.error),
                                       ),
-                                      errorWidget: (context, url, error) =>
-                                        const Icon(Icons.error),
+                                    )
+                                  : const Center(
+                                      child: Icon(Icons.videocam, size: 40),
                                     ),
-                                  )
-                                : const Center(
-                                    child: Icon(Icons.videocam, size: 40),
-                                  ),
-                          ),
-                          Positioned(
-                            top: 0,
-                            right: 8,
-                            child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.red),
-                              onPressed: () => _removeExistingMedia(index),
                             ),
-                          ),
-                        ],
-                      );
-                    } else {
-                      // 새로 추가한 미디어 (로컬 파일)
-                      final newIndex = index - _existingMediaUrls.length;
-                      final mediaFile = _newMediaFiles[newIndex];
-                      final mediaType = _newMediaTypes[newIndex];
+                            Positioned(
+                              top: 0,
+                              right: 8,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.red),
+                                onPressed: () => _removeExistingMedia(index),
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        // 새로 추가한 미디어 (로컬 파일)
+                        final newIndex = index - _existingMediaUrls.length;
+                        final mediaFile = _newMediaFiles[newIndex];
+                        final mediaType = _newMediaTypes[newIndex];
 
-                      return Stack(
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
+                        return Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 100,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: mediaType == 'image'
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(mediaFile, fit: BoxFit.cover),
+                                    )
+                                  : const Center(
+                                      child: Icon(Icons.videocam, size: 40),
+                                    ),
                             ),
-                            child: mediaType == 'image'
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(mediaFile, fit: BoxFit.cover),
-                                  )
-                                : const Center(
-                                    child: Icon(Icons.videocam, size: 40),
-                                  ),
-                          ),
-                          Positioned(
-                            top: 0,
-                            right: 8,
-                            child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  _newMediaFiles.removeAt(newIndex);
-                                  _newMediaTypes.removeAt(newIndex);
-                                });
-                              },
+                            Positioned(
+                              top: 0,
+                              right: 8,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.red),
+                                onPressed: () {
+                                  setState(() {
+                                    _newMediaFiles.removeAt(newIndex);
+                                    _newMediaTypes.removeAt(newIndex);
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    }
-                  },
+                          ],
+                        );
+                      }
+                    },
+                  ),
                 ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: _showMediaOptions,
+                icon: const Icon(Icons.add_photo_alternate),
+                label: const Text('사진/동영상 추가'),
               ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: _showMediaOptions,
-              icon: const Icon(Icons.add_photo_alternate),
-              label: const Text('사진/동영상 추가'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _updateWorkLog,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _updateWorkLog,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('수정 완료', style: TextStyle(fontSize: 16)),
               ),
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('수정 완료', style: TextStyle(fontSize: 16)),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
