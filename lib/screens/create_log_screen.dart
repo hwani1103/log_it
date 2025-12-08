@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import '../models/work_log.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -8,7 +9,9 @@ import '../services/storage_service.dart';
 import 'work_log_detail_screen.dart';
 
 class CreateLogScreen extends StatefulWidget {
-  const CreateLogScreen({super.key});
+  final DateTime? selectedDate; // 날짜별 조회에서 온 경우 해당 날짜 사용
+
+  const CreateLogScreen({super.key, this.selectedDate});
 
   @override
   State<CreateLogScreen> createState() => _CreateLogScreenState();
@@ -134,12 +137,15 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
         }
       }
 
+      // 날짜별 조회에서 온 경우 해당 날짜 사용, 아니면 현재 시간
+      final DateTime createdAt = widget.selectedDate ?? DateTime.now();
+
       final workLog = WorkLog(
         id: '',
         userId: userId,
         equipmentName: _equipmentController.text.trim().toUpperCase(),
         content: _capitalizeEnglishWords(_contentController.text.trim()),
-        createdAt: DateTime.now(),
+        createdAt: createdAt,
         mediaUrls: mediaUrls,
         mediaTypes: uploadedMediaTypes,
       );
@@ -155,16 +161,29 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
           _mediaTypes.clear();
         });
 
-        // 디테일 화면으로 이동
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WorkLogDetailScreen(
-              workLog: createdWorkLog,
-              showEquipmentFirst: false,
+        // 날짜별 조회에서 온 경우 현재 화면을 DetailScreen으로 교체
+        if (widget.selectedDate != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WorkLogDetailScreen(
+                workLog: createdWorkLog,
+                showEquipmentFirst: false,
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          // 일지작성 탭에서 온 경우 DetailScreen을 push
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WorkLogDetailScreen(
+                workLog: createdWorkLog,
+                showEquipmentFirst: false,
+              ),
+            ),
+          );
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('일지가 저장되었습니다')),
@@ -221,7 +240,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -347,5 +366,19 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
         ],
       ),
     );
+
+    // 날짜별 조회에서 온 경우 Scaffold로 감싸기
+    if (widget.selectedDate != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('일지 작성 (${DateFormat('MM월 dd일').format(widget.selectedDate!)})'),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+        ),
+        body: content,
+      );
+    }
+
+    return content;
   }
 }

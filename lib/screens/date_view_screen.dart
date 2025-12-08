@@ -4,6 +4,7 @@ import '../models/work_log.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import 'work_log_detail_screen.dart';
+import 'create_log_screen.dart';
 
 class DateViewScreen extends StatefulWidget {
   const DateViewScreen({super.key});
@@ -15,22 +16,21 @@ class DateViewScreen extends StatefulWidget {
 class _DateViewScreenState extends State<DateViewScreen> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
-  final PageController _pageController = PageController();
 
   List<DateTime> _datesWithLogs = [];
-  int _currentPageIndex = 0;
+  DateTime _currentDate = DateTime.now();
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    // 오늘 날짜로 초기화 (시간은 00:00:00)
+    _currentDate = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
     _loadDatesWithLogs();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadDatesWithLogs() async {
@@ -46,34 +46,35 @@ class _DateViewScreenState extends State<DateViewScreen> {
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _datesWithLogs.isNotEmpty
-          ? _datesWithLogs[_currentPageIndex]
-          : DateTime.now(),
+      initialDate: _currentDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      lastDate: DateTime.now(), // 미래 날짜 선택 불가
     );
 
     if (picked != null) {
-      final pickedDateOnly = DateTime(picked.year, picked.month, picked.day);
-      final index = _datesWithLogs.indexWhere((date) =>
-        date.year == pickedDateOnly.year &&
-        date.month == pickedDateOnly.month &&
-        date.day == pickedDateOnly.day
-      );
+      setState(() {
+        _currentDate = DateTime(picked.year, picked.month, picked.day);
+      });
+    }
+  }
 
-      if (index != -1) {
-        _pageController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('해당 날짜에 작성된 일지가 없습니다')),
-          );
-        }
-      }
+  void _goToPreviousDateWithLog() {
+    // 현재 날짜보다 이전 날짜 중 일지가 있는 날짜 찾기
+    final previousDates = _datesWithLogs.where((date) => date.isBefore(_currentDate)).toList();
+    if (previousDates.isNotEmpty) {
+      setState(() {
+        _currentDate = previousDates.first; // 가장 최근 날짜
+      });
+    }
+  }
+
+  void _goToNextDateWithLog() {
+    // 현재 날짜보다 이후 날짜 중 일지가 있는 날짜 찾기
+    final nextDates = _datesWithLogs.where((date) => date.isAfter(_currentDate)).toList();
+    if (nextDates.isNotEmpty) {
+      setState(() {
+        _currentDate = nextDates.last; // 가장 오래된 날짜 (reversed list이므로)
+      });
     }
   }
 
@@ -83,58 +84,90 @@ class _DateViewScreenState extends State<DateViewScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_datesWithLogs.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_today, size: 80, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              '작성된 일지가 없습니다',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          ],
-        ),
-      );
-    }
+    final hasPreviousLog = _datesWithLogs.any((date) => date.isBefore(_currentDate));
+    final hasNextLog = _datesWithLogs.any((date) => date.isAfter(_currentDate));
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final isFutureDate = _currentDate.isAfter(today);
 
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.blue.shade50,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
             children: [
-              Text(
-                DateFormat('yyyy년 MM월 dd일').format(_datesWithLogs[_currentPageIndex]),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // 일지 작성 버튼
+                  IconButton(
+                    onPressed: isFutureDate ? null : () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CreateLogScreen(selectedDate: _currentDate),
+                        ),
+                      );
+                      // 일지 작성 후 목록 새로고침
+                      _loadDatesWithLogs();
+                    },
+                    icon: const Icon(Icons.edit, size: 24),
+                    color: isFutureDate ? Colors.grey : Colors.blue,
+                    tooltip: '일지 작성',
+                  ),
+                  // 현재 날짜 표시
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        DateFormat('yyyy년 MM월 dd일').format(_currentDate),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // 날짜 선택 버튼
+                  ElevatedButton.icon(
+                    onPressed: _selectDate,
+                    icon: const Icon(Icons.calendar_today, size: 16),
+                    label: const Text('날짜 선택'),
+                  ),
+                ],
               ),
-              ElevatedButton.icon(
-                onPressed: _selectDate,
-                icon: const Icon(Icons.calendar_today, size: 16),
-                label: const Text('날짜 선택'),
+              const SizedBox(height: 12),
+              // 날짜 네비게이션 버튼
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: hasPreviousLog ? _goToPreviousDateWithLog : null,
+                    icon: const Icon(Icons.arrow_back_ios),
+                    tooltip: '이전 일지',
+                  ),
+                  const SizedBox(width: 24),
+                  Text(
+                    '일지 있는 날짜로 이동',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  IconButton(
+                    onPressed: hasNextLog ? _goToNextDateWithLog : null,
+                    icon: const Icon(Icons.arrow_forward_ios),
+                    tooltip: '다음 일지',
+                  ),
+                ],
               ),
             ],
           ),
         ),
         Expanded(
-          child: PageView.builder(
-            controller: _pageController,
-            reverse: false, // 왼쪽 스와이프로 과거로 이동
-            onPageChanged: (index) {
-              setState(() {
-                _currentPageIndex = index;
-              });
-            },
-            itemCount: _datesWithLogs.length,
-            itemBuilder: (context, index) {
-              return DateLogsList(date: _datesWithLogs[index]);
-            },
+          child: DateLogsList(
+            date: _currentDate,
+            key: ValueKey(_currentDate.toString()),
           ),
         ),
       ],
@@ -170,8 +203,22 @@ class DateLogsList extends StatelessWidget {
         final workLogs = snapshot.data ?? [];
 
         if (workLogs.isEmpty) {
-          return const Center(
-            child: Text('해당 날짜에 작성된 일지가 없습니다'),
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.event_note, size: 80, color: Colors.grey.shade300),
+                const SizedBox(height: 16),
+                Text(
+                  '${DateFormat('MM월 dd일').format(date)}에\n작성된 일지가 없습니다',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
           );
         }
 
