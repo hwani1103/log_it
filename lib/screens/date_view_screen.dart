@@ -94,80 +94,62 @@ class _DateViewScreenState extends State<DateViewScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.blue.shade50,
-          child: Column(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // 일지 작성 버튼
-                  IconButton(
-                    onPressed: isFutureDate ? null : () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CreateLogScreen(selectedDate: _currentDate),
-                        ),
-                      );
-                      // 일지 작성 후 목록 새로고침
-                      _loadDatesWithLogs();
-                    },
-                    icon: const Icon(Icons.edit, size: 24),
-                    color: isFutureDate ? Colors.grey : Colors.blue,
-                    tooltip: '일지 작성',
-                  ),
-                  // 현재 날짜 표시
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        DateFormat('yyyy년 MM월 dd일').format(_currentDate),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+              // 일지 작성 버튼
+              IconButton(
+                onPressed: isFutureDate ? null : () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CreateLogScreen(selectedDate: _currentDate),
                     ),
-                  ),
-                  // 날짜 선택 버튼
-                  ElevatedButton.icon(
-                    onPressed: _selectDate,
-                    icon: const Icon(Icons.calendar_today, size: 16),
-                    label: const Text('날짜 선택'),
-                  ),
-                ],
+                  );
+                  // 일지 작성 후 목록 새로고침
+                  _loadDatesWithLogs();
+                },
+                icon: const Icon(Icons.edit, size: 24),
+                color: isFutureDate ? Colors.grey : Colors.blue,
+                tooltip: '일지 작성',
               ),
-              const SizedBox(height: 12),
-              // 날짜 네비게이션 버튼
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: hasPreviousLog ? _goToPreviousDateWithLog : null,
-                    icon: const Icon(Icons.arrow_back_ios),
-                    tooltip: '이전 일지',
-                  ),
-                  const SizedBox(width: 24),
-                  Text(
-                    '일지 있는 날짜로 이동',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade700,
+              // 현재 날짜 표시
+              Expanded(
+                child: Center(
+                  child: Text(
+                    DateFormat('yyyy년 MM월 dd일').format(_currentDate),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 24),
-                  IconButton(
-                    onPressed: hasNextLog ? _goToNextDateWithLog : null,
-                    icon: const Icon(Icons.arrow_forward_ios),
-                    tooltip: '다음 일지',
-                  ),
-                ],
+                ),
+              ),
+              // 날짜 선택 버튼
+              ElevatedButton.icon(
+                onPressed: _selectDate,
+                icon: const Icon(Icons.calendar_today, size: 16),
+                label: const Text('날짜 선택'),
               ),
             ],
           ),
         ),
         Expanded(
-          child: DateLogsList(
-            date: _currentDate,
-            key: ValueKey(_currentDate.toString()),
+          child: GestureDetector(
+            onHorizontalDragEnd: (details) {
+              // 왼쪽으로 스와이프 (이전 일지로)
+              if (details.primaryVelocity! < 0 && hasPreviousLog) {
+                _goToPreviousDateWithLog();
+              }
+              // 오른쪽으로 스와이프 (다음 일지로)
+              else if (details.primaryVelocity! > 0 && hasNextLog) {
+                _goToNextDateWithLog();
+              }
+            },
+            child: DateLogsList(
+              date: _currentDate,
+              key: ValueKey(_currentDate.toString()),
+            ),
           ),
         ),
       ],
