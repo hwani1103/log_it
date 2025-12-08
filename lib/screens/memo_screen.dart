@@ -86,22 +86,31 @@ class _MemoScreenState extends State<MemoScreen> {
       });
     } else {
       // 읽기 모드 → 편집 모드: 오늘 메모만 로드
-      final userId = _authService.currentUser?.uid ?? '';
-      final today = Memo.dateOnly(DateTime.now());
-      final todayMemo = await _memoService.getMemoByDate(userId, today);
+      try {
+        final userId = _authService.currentUser?.uid ?? '';
+        final today = Memo.dateOnly(DateTime.now());
+        final todayMemo = await _memoService.getMemoByDate(userId, today);
 
-      setState(() {
-        _isEditMode = true;
-        _controller.text = todayMemo?.content ?? '';
-      });
+        setState(() {
+          _isEditMode = true;
+          _controller.text = todayMemo?.content ?? '';
+        });
 
-      // 커서를 맨 위로
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _focusNode.requestFocus();
-        _controller.selection = TextSelection.fromPosition(
-          const TextPosition(offset: 0),
-        );
-      });
+        // 커서를 맨 위로
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _focusNode.requestFocus();
+          _controller.selection = TextSelection.fromPosition(
+            const TextPosition(offset: 0),
+          );
+        });
+      } catch (e) {
+        print('편집 모드 전환 에러: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('편집 모드 전환 실패: $e')),
+          );
+        }
+      }
     }
   }
 
