@@ -88,6 +88,7 @@ class _EquipmentAliasSettingsScreenState extends State<EquipmentAliasSettingsScr
               controller: standardController,
               decoration: const InputDecoration(
                 labelText: '저장될 텍스트',
+                floatingLabelBehavior: FloatingLabelBehavior.always,
                 border: OutlineInputBorder(),
               ),
               textCapitalization: TextCapitalization.characters,
@@ -97,6 +98,7 @@ class _EquipmentAliasSettingsScreenState extends State<EquipmentAliasSettingsScr
               controller: aliasesController,
               decoration: const InputDecoration(
                 labelText: '변형될 텍스트',
+                floatingLabelBehavior: FloatingLabelBehavior.always,
                 border: OutlineInputBorder(),
               ),
               textCapitalization: TextCapitalization.characters,
@@ -218,6 +220,7 @@ class _EquipmentAliasSettingsScreenState extends State<EquipmentAliasSettingsScr
                         controller: _standardController,
                         decoration: const InputDecoration(
                           labelText: '저장될 텍스트',
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
                           border: OutlineInputBorder(),
                           filled: true,
                           fillColor: Colors.white,
@@ -232,6 +235,7 @@ class _EquipmentAliasSettingsScreenState extends State<EquipmentAliasSettingsScr
                         controller: _aliasesController,
                         decoration: const InputDecoration(
                           labelText: '변형될 텍스트',
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
                           border: OutlineInputBorder(),
                           filled: true,
                           fillColor: Colors.white,
