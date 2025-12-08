@@ -209,71 +209,34 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
     }
   }
 
-  void _showMediaFullScreen(int index) {
+  void _showMediaFullScreen(int index) async {
     // 동영상인 경우 클릭 시 초기화 (네트워크 사용량 절감)
     if (index < widget.workLog.mediaTypes.length &&
         widget.workLog.mediaTypes[index] == 'video') {
-      _initializeVideoPlayer(index);
+      await _initializeVideoPlayer(index);
     }
 
-    Navigator.push(
+    if (!mounted) return;
+
+    final isVideo = index < widget.workLog.mediaTypes.length &&
+        widget.workLog.mediaTypes[index] == 'video';
+
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
-          ),
-          body: Center(
-            child: (index < widget.workLog.mediaTypes.length &&
-                    widget.workLog.mediaTypes[index] == 'image')
-                ? FutureBuilder<File>(
-                    future: CacheHelper().getCachedImageFile(widget.workLog.mediaUrls[index]),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return const Icon(Icons.error, color: Colors.white);
-                      }
-                      if (!snapshot.hasData) {
-                        return const CircularProgressIndicator();
-                      }
-                      return InteractiveViewer(
-                        child: Image.file(snapshot.data!),
-                      );
-                    },
-                  )
-                : _videoControllers[index] != null &&
-                        _videoControllers[index]!.value.isInitialized
-                    ? AspectRatio(
-                        aspectRatio:
-                            _videoControllers[index]!.value.aspectRatio,
-                        child: VideoPlayer(_videoControllers[index]!),
-                      )
-                    : const CircularProgressIndicator(),
-          ),
-          floatingActionButton: (index < widget.workLog.mediaTypes.length &&
-                  widget.workLog.mediaTypes[index] == 'video' &&
-                  _videoControllers[index] != null)
-              ? FloatingActionButton(
-                  onPressed: () {
-                    setState(() {
-                      if (_videoControllers[index]!.value.isPlaying) {
-                        _videoControllers[index]!.pause();
-                      } else {
-                        _videoControllers[index]!.play();
-                      }
-                    });
-                  },
-                  child: Icon(
-                    _videoControllers[index]!.value.isPlaying
-                        ? Icons.pause
-                        : Icons.play_arrow,
-                  ),
-                )
-              : null,
+        builder: (context) => _MediaFullScreenView(
+          mediaUrl: widget.workLog.mediaUrls[index],
+          mediaType: widget.workLog.mediaTypes[index],
+          videoController: isVideo ? _videoControllers[index] : null,
         ),
       ),
     );
+
+    // 뒤로가기 후 비디오 일시정지
+    if (isVideo && _videoControllers[index] != null) {
+      _videoControllers[index]!.pause();
+      if (mounted) setState(() {});
+    }
   }
 
   @override
@@ -504,6 +467,103 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// 미디어 풀스크린 뷰 (동영상 재생/일시정지 버튼 상태 관리)
+class _MediaFullScreenView extends StatefulWidget {
+  final String mediaUrl;
+  final String mediaType;
+  final VideoPlayerController? videoController;
+
+  const _MediaFullScreenView({
+    required this.mediaUrl,
+    required this.mediaType,
+    this.videoController,
+  });
+
+  @override
+  State<_MediaFullScreenView> createState() => _MediaFullScreenViewState();
+}
+
+class _MediaFullScreenViewState extends State<_MediaFullScreenView> {
+  @override
+  void initState() {
+    super.initState();
+    // VideoController에 리스너 추가하여 재생 상태 변경 시 UI 업데이트
+    widget.videoController?.addListener(_videoListener);
+  }
+
+  @override
+  void dispose() {
+    widget.videoController?.removeListener(_videoListener);
+    super.dispose();
+  }
+
+  void _videoListener() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _togglePlayPause() {
+    if (widget.videoController == null) return;
+
+    if (widget.videoController!.value.isPlaying) {
+      widget.videoController!.pause();
+    } else {
+      widget.videoController!.play();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Center(
+        child: widget.mediaType == 'image'
+            ? FutureBuilder<File>(
+                future: CacheHelper().getCachedImageFile(widget.mediaUrl),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const Icon(Icons.error, color: Colors.white);
+                  }
+                  if (!snapshot.hasData) {
+                    return const CircularProgressIndicator();
+                  }
+                  return InteractiveViewer(
+                    child: Image.file(snapshot.data!),
+                  );
+                },
+              )
+            : widget.videoController != null &&
+                    widget.videoController!.value.isInitialized
+                ? GestureDetector(
+                    onTap: _togglePlayPause,
+                    child: AspectRatio(
+                      aspectRatio: widget.videoController!.value.aspectRatio,
+                      child: VideoPlayer(widget.videoController!),
+                    ),
+                  )
+                : const CircularProgressIndicator(),
+      ),
+      floatingActionButton: widget.mediaType == 'video' &&
+              widget.videoController != null &&
+              widget.videoController!.value.isInitialized
+          ? FloatingActionButton(
+              onPressed: _togglePlayPause,
+              child: Icon(
+                widget.videoController!.value.isPlaying
+                    ? Icons.pause
+                    : Icons.play_arrow,
+              ),
+            )
+          : null,
     );
   }
 }
