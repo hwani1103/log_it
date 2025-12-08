@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../models/work_log.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../utils/cache_helper.dart';
 
 class WorkLogCard extends StatelessWidget {
   final WorkLog workLog;
@@ -80,6 +81,7 @@ class WorkLogCard extends StatelessWidget {
                         child: type == 'image'
                             ? CachedNetworkImage(
                                 imageUrl: url,
+                                cacheKey: CacheHelper.getStableCacheKey(url),
                                 fit: BoxFit.cover,
                                 placeholder: (context, url) =>
                                     const Center(child: CircularProgressIndicator()),
@@ -91,6 +93,7 @@ class WorkLogCard extends StatelessWidget {
                                 children: [
                                   CachedNetworkImage(
                                     imageUrl: url,
+                                    cacheKey: CacheHelper.getStableCacheKey(url),
                                     fit: BoxFit.cover,
                                     errorWidget: (context, url, error) =>
                                         Container(color: Colors.grey.shade200),
@@ -176,6 +179,7 @@ class WorkLogCard extends StatelessWidget {
                 ? InteractiveViewer(
                     child: CachedNetworkImage(
                       imageUrl: url,
+                      cacheKey: CacheHelper.getStableCacheKey(url),
                       placeholder: (context, url) =>
                           const CircularProgressIndicator(),
                       errorWidget: (context, url, error) =>

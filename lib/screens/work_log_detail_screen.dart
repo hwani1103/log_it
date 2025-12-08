@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../models/work_log.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../utils/cache_helper.dart';
 import 'edit_log_screen.dart';
 
 class WorkLogDetailScreen extends StatefulWidget {
@@ -134,6 +135,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                 ? InteractiveViewer(
                     child: CachedNetworkImage(
                       imageUrl: widget.workLog.mediaUrls[index],
+                      cacheKey: CacheHelper.getStableCacheKey(widget.workLog.mediaUrls[index]),
                       placeholder: (context, url) =>
                           const CircularProgressIndicator(),
                       errorWidget: (context, url, error) =>
@@ -333,6 +335,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                             child: widget.workLog.mediaTypes[index] == 'image'
                                 ? CachedNetworkImage(
                                     imageUrl: widget.workLog.mediaUrls[index],
+                                    cacheKey: CacheHelper.getStableCacheKey(widget.workLog.mediaUrls[index]),
                                     fit: BoxFit.cover,
                                     placeholder: (context, url) => Container(
                                       color: Colors.grey.shade200,

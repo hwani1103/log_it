@@ -6,6 +6,7 @@ import '../models/work_log.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../utils/cache_helper.dart';
 
 class EditLogScreen extends StatefulWidget {
   final WorkLog workLog;
@@ -275,6 +276,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                       child: CachedNetworkImage(
                                         imageUrl: mediaUrl,
+                                        cacheKey: CacheHelper.getStableCacheKey(mediaUrl),
                                         fit: BoxFit.cover,
                                         placeholder: (context, url) => const Center(
                                           child: CircularProgressIndicator(),
