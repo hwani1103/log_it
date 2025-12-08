@@ -151,16 +151,19 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
         // Storage에서 파일 삭제
         await _storageService.deleteMedia(widget.workLog.mediaUrls[index]);
 
-        // 동영상이면 캐시도 삭제
+        // 캐시에서도 삭제
         if (widget.workLog.mediaTypes[index] == 'video') {
-          final cacheHelper = VideoCacheHelper();
-          await cacheHelper.removeFromCache(widget.workLog.mediaUrls[index]);
+          final videoCacheHelper = VideoCacheHelper();
+          await videoCacheHelper.removeFromCache(widget.workLog.mediaUrls[index]);
 
           // VideoController도 dispose
           if (_videoControllers.containsKey(index)) {
             _videoControllers[index]?.dispose();
             _videoControllers.remove(index);
           }
+        } else if (widget.workLog.mediaTypes[index] == 'image') {
+          final imageCacheHelper = CacheHelper();
+          await imageCacheHelper.removeImageFromCache(widget.workLog.mediaUrls[index]);
         }
 
         // 배열에서 제거
@@ -225,15 +228,19 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
           body: Center(
             child: (index < widget.workLog.mediaTypes.length &&
                     widget.workLog.mediaTypes[index] == 'image')
-                ? InteractiveViewer(
-                    child: CachedNetworkImage(
-                      imageUrl: widget.workLog.mediaUrls[index],
-                      cacheKey: CacheHelper.getStableCacheKey(widget.workLog.mediaUrls[index]),
-                      placeholder: (context, url) =>
-                          const CircularProgressIndicator(),
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.error, color: Colors.white),
-                    ),
+                ? FutureBuilder<File>(
+                    future: CacheHelper().getCachedImageFile(widget.workLog.mediaUrls[index]),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const Icon(Icons.error, color: Colors.white);
+                      }
+                      if (!snapshot.hasData) {
+                        return const CircularProgressIndicator();
+                      }
+                      return InteractiveViewer(
+                        child: Image.file(snapshot.data!),
+                      );
+                    },
                   )
                 : _videoControllers[index] != null &&
                         _videoControllers[index]!.value.isInitialized
@@ -423,6 +430,7 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                       itemCount: widget.workLog.mediaUrls.length,
                       itemBuilder: (context, index) {
                         return Stack(
+                          fit: StackFit.expand,
                           children: [
                             GestureDetector(
                               onTap: () => _showMediaFullScreen(index),
@@ -430,21 +438,28 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 child: (index < widget.workLog.mediaTypes.length &&
                                         widget.workLog.mediaTypes[index] == 'image')
-                                    ? CachedNetworkImage(
-                                        imageUrl: widget.workLog.mediaUrls[index],
-                                        cacheKey: CacheHelper.getStableCacheKey(widget.workLog.mediaUrls[index]),
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) => Container(
-                                          color: Colors.grey.shade200,
-                                          child: const Center(
-                                            child: CircularProgressIndicator(),
-                                          ),
-                                        ),
-                                        errorWidget: (context, url, error) =>
-                                            Container(
-                                          color: Colors.grey.shade200,
-                                          child: const Icon(Icons.error),
-                                        ),
+                                    ? FutureBuilder<File>(
+                                        future: CacheHelper().getCachedImageFile(widget.workLog.mediaUrls[index]),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.hasError) {
+                                            return Container(
+                                              color: Colors.grey.shade200,
+                                              child: const Center(child: Icon(Icons.error)),
+                                            );
+                                          }
+                                          if (!snapshot.hasData) {
+                                            return Container(
+                                              color: Colors.grey.shade200,
+                                              child: const Center(child: CircularProgressIndicator()),
+                                            );
+                                          }
+                                          return Image.file(
+                                            snapshot.data!,
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                          );
+                                        },
                                       )
                                     : Container(
                                         color: Colors.grey.shade200,
