@@ -87,7 +87,6 @@ class _EquipmentAliasSettingsScreenState extends State<EquipmentAliasSettingsScr
             TextField(
               controller: standardController,
               decoration: const InputDecoration(
-                labelText: '저장될 텍스트',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -95,8 +94,6 @@ class _EquipmentAliasSettingsScreenState extends State<EquipmentAliasSettingsScr
             TextField(
               controller: aliasesController,
               decoration: const InputDecoration(
-                labelText: '변형될 텍스트',
-                hintText: '띄어쓰기로 구분',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -216,8 +213,6 @@ class _EquipmentAliasSettingsScreenState extends State<EquipmentAliasSettingsScr
                       child: TextField(
                         controller: _standardController,
                         decoration: const InputDecoration(
-                          labelText: '저장될 텍스트',
-                          hintText: 'LI',
                           border: OutlineInputBorder(),
                           filled: true,
                           fillColor: Colors.white,
@@ -231,8 +226,6 @@ class _EquipmentAliasSettingsScreenState extends State<EquipmentAliasSettingsScr
                       child: TextField(
                         controller: _aliasesController,
                         decoration: const InputDecoration(
-                          labelText: '변형될 텍스트',
-                          hintText: 'LI LIC LIA LT',
                           border: OutlineInputBorder(),
                           filled: true,
                           fillColor: Colors.white,

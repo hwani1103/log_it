@@ -40,7 +40,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
   @override
   void initState() {
     super.initState();
-    _aliasService.loadRules();
+    // EquipmentAliasService는 싱글톤이며 main.dart에서 이미 로드됨
     _equipmentController = TextEditingController(text: widget.workLog.equipmentName);
     _contentController = TextEditingController(text: widget.workLog.content);
     _existingMediaUrls = List.from(widget.workLog.mediaUrls);

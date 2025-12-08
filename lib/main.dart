@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'services/auth_service.dart';
+import 'services/equipment_alias_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // 설비명 변환 규칙 로드
+  final aliasService = EquipmentAliasService();
+  await aliasService.loadRules();
+
   runApp(const MyApp());
 }
 

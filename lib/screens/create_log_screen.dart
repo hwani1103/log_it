@@ -35,7 +35,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
   @override
   void initState() {
     super.initState();
-    _aliasService.loadRules();
+    // EquipmentAliasService는 싱글톤이며 main.dart에서 이미 로드됨
   }
 
   @override

@@ -3,6 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class EquipmentAliasService {
   static const String _storageKey = 'equipment_alias_rules';
 
+  // 싱글톤 인스턴스
+  static final EquipmentAliasService _instance = EquipmentAliasService._internal();
+  factory EquipmentAliasService() => _instance;
+
   // 기본 규칙
   static const Map<String, List<String>> _defaultRules = {
     'LIA': ['LI', 'LT', 'LIC', 'LIA'],
@@ -18,7 +22,10 @@ class EquipmentAliasService {
   // 역방향 맵 (빠른 검색용: 변형 → 표준)
   Map<String, String> _aliasToStandard = {};
 
-  EquipmentAliasService() {
+  // 로드 완료 여부
+  bool _isLoaded = false;
+
+  EquipmentAliasService._internal() {
     _initializeDefaultRules();
   }
 
@@ -39,6 +46,8 @@ class EquipmentAliasService {
 
   // SharedPreferences에서 규칙 로드
   Future<void> loadRules() async {
+    if (_isLoaded) return; // 이미 로드되었으면 건너뛰기
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final rulesJson = prefs.getStringList(_storageKey);
@@ -60,9 +69,11 @@ class EquipmentAliasService {
       }
 
       _buildReverseMap();
+      _isLoaded = true;
     } catch (e) {
       print('규칙 로드 실패: $e');
       _initializeDefaultRules();
+      _isLoaded = true;
     }
   }
 
