@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import 'create_log_screen.dart';
 import 'date_view_screen.dart';
 import 'equipment_view_screen.dart';
+import 'memo_screen.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       const DateViewScreen(),
       const EquipmentViewScreen(),
+      const MemoScreen(),
     ];
   }
 
@@ -67,6 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.add_box),
@@ -79,6 +84,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
             label: '설비별 조회',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.note),
+            label: '메모',
           ),
         ],
       ),
