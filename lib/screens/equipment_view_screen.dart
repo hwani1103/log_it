@@ -178,25 +178,29 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              info.name,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  info.name,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                Text(
+                                  dateStr,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 8),
                             Text(
                               '설비 이력: ${info.logCount}개',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '가장 최근 이력: $dateStr',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey.shade700,
@@ -483,10 +487,10 @@ class AllEquipmentsScreen extends StatelessWidget {
       body: GridView.builder(
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 2.5,
+          crossAxisCount: 4,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 1.5,
         ),
         itemCount: equipmentNames.length,
         itemBuilder: (context, index) {
@@ -520,14 +524,19 @@ class AllEquipmentsScreen extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: Text(
-                  equipmentName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    equipmentName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
             ),

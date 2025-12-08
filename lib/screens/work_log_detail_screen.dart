@@ -92,7 +92,13 @@ class _WorkLogDetailScreenState extends State<WorkLogDetailScreen> {
         await _firestoreService.deleteWorkLog(widget.workLog.id);
 
         if (mounted) {
-          Navigator.pop(context);
+          // 설비별 조회 탭에서 왔으면 설비 상세 화면까지 모두 pop하여 설비별 조회 탭으로 돌아가기
+          if (widget.showEquipmentFirst) {
+            Navigator.pop(context); // WorkLogDetailScreen pop
+            Navigator.pop(context); // EquipmentHistoryScreen pop
+          } else {
+            Navigator.pop(context);
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('일지가 삭제되었습니다')),
           );
