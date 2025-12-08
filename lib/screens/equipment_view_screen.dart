@@ -222,7 +222,7 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
 }
 
 // 특정 설비의 날짜별 이력 화면
-class EquipmentHistoryScreen extends StatelessWidget {
+class EquipmentHistoryScreen extends StatefulWidget {
   final String equipmentName;
 
   const EquipmentHistoryScreen({
@@ -231,20 +231,38 @@ class EquipmentHistoryScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final AuthService authService = AuthService();
-    final FirestoreService firestoreService = FirestoreService();
-    final userId = authService.currentUser?.uid ?? '';
+  State<EquipmentHistoryScreen> createState() => _EquipmentHistoryScreenState();
+}
 
+class _EquipmentHistoryScreenState extends State<EquipmentHistoryScreen> {
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
+  late Future<Map<DateTime, List<WorkLog>>> _logsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLogs();
+  }
+
+  void _loadLogs() {
+    final userId = _authService.currentUser?.uid ?? '';
+    setState(() {
+      _logsFuture = _firestoreService.getWorkLogsByEquipmentGroupedByDate(
+        userId,
+        widget.equipmentName,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(equipmentName),
+        title: Text(widget.equipmentName),
       ),
       body: FutureBuilder<Map<DateTime, List<WorkLog>>>(
-        future: firestoreService.getWorkLogsByEquipmentGroupedByDate(
-          userId,
-          equipmentName,
-        ),
+        future: _logsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -301,8 +319,8 @@ class EquipmentHistoryScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: InkWell(
-                  onTap: () {
-                    Navigator.push(
+                  onTap: () async {
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => WorkLogDetailScreen(
@@ -311,6 +329,8 @@ class EquipmentHistoryScreen extends StatelessWidget {
                         ),
                       ),
                     );
+                    // 상세 화면에서 돌아오면 다시 로드
+                    _loadLogs();
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
