@@ -27,35 +27,6 @@ class _MemoScreenState extends State<MemoScreen> {
   void initState() {
     super.initState();
     _loadMemos();
-    _addTestData(); // 테스트 데이터 추가
-  }
-
-  // 테스트용 가상 데이터 생성
-  Future<void> _addTestData() async {
-    try {
-      final userId = _authService.currentUser?.uid ?? '';
-      if (userId.isEmpty) return;
-
-      // 12월 6일 메모
-      final dec6 = DateTime(2025, 12, 6);
-      await _memoService.saveMemo(
-        userId,
-        dec6,
-        '오늘 설비 점검 완료\n내일 유지보수 예정\n특이사항 없음',
-      );
-
-      // 12월 7일 메모
-      final dec7 = DateTime(2025, 12, 7);
-      await _memoService.saveMemo(
-        userId,
-        dec7,
-        '유지보수 작업 완료\n부품 교체 필요 항목 확인\n다음 주 재고 주문 예정',
-      );
-
-      print('테스트 데이터 생성 완료');
-    } catch (e) {
-      print('테스트 데이터 생성 에러: $e');
-    }
   }
 
   @override
