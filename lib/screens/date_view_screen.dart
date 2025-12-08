@@ -96,9 +96,8 @@ class _DateViewScreenState extends State<DateViewScreen> {
           padding: const EdgeInsets.all(16),
           color: Colors.blue.shade50,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 일지 작성 버튼
+              // 일지 작성 버튼 (왼쪽)
               IconButton(
                 onPressed: isFutureDate ? null : () async {
                   await Navigator.push(
@@ -114,43 +113,51 @@ class _DateViewScreenState extends State<DateViewScreen> {
                 color: isFutureDate ? Colors.grey : Colors.blue,
                 tooltip: '일지 작성',
               ),
-              // 현재 날짜 표시
+              // 중앙: < 버튼, 날짜, > 버튼
               Expanded(
-                child: Center(
-                  child: Text(
-                    DateFormat('yyyy년 MM월 dd일').format(_currentDate),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // < 버튼 (이전 일지)
+                    IconButton(
+                      onPressed: hasPreviousLog ? _goToPreviousDateWithLog : null,
+                      icon: const Icon(Icons.chevron_left, size: 28),
+                      color: hasPreviousLog ? Colors.black87 : Colors.grey.shade300,
                     ),
-                  ),
+                    // 날짜 표시
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        DateFormat('yyyy년 MM월 dd일').format(_currentDate),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    // > 버튼 (다음 일지)
+                    IconButton(
+                      onPressed: hasNextLog ? _goToNextDateWithLog : null,
+                      icon: const Icon(Icons.chevron_right, size: 28),
+                      color: hasNextLog ? Colors.black87 : Colors.grey.shade300,
+                    ),
+                  ],
                 ),
               ),
-              // 날짜 선택 버튼
-              ElevatedButton.icon(
+              // 달력 아이콘 (우측)
+              IconButton(
                 onPressed: _selectDate,
-                icon: const Icon(Icons.calendar_today, size: 16),
-                label: const Text('날짜 선택'),
+                icon: const Icon(Icons.calendar_today, size: 20),
+                color: Colors.blue,
+                tooltip: '날짜 선택',
               ),
             ],
           ),
         ),
         Expanded(
-          child: GestureDetector(
-            onHorizontalDragEnd: (details) {
-              // 왼쪽으로 스와이프 (이전 일지로)
-              if (details.primaryVelocity! < 0 && hasPreviousLog) {
-                _goToPreviousDateWithLog();
-              }
-              // 오른쪽으로 스와이프 (다음 일지로)
-              else if (details.primaryVelocity! > 0 && hasNextLog) {
-                _goToNextDateWithLog();
-              }
-            },
-            child: DateLogsList(
-              date: _currentDate,
-              key: ValueKey(_currentDate.toString()),
-            ),
+          child: DateLogsList(
+            date: _currentDate,
+            key: ValueKey(_currentDate.toString()),
           ),
         ),
       ],
