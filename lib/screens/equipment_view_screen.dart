@@ -7,6 +7,19 @@ import '../services/equipment_alias_service.dart';
 import 'work_log_detail_screen.dart';
 import 'equipment_alias_settings_screen.dart';
 
+// 설비 정보를 담는 클래스
+class EquipmentInfo {
+  final String name;
+  final int logCount;
+  final DateTime latestDate;
+
+  EquipmentInfo({
+    required this.name,
+    required this.logCount,
+    required this.latestDate,
+  });
+}
+
 class EquipmentViewScreen extends StatefulWidget {
   const EquipmentViewScreen({super.key});
 
@@ -29,8 +42,8 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
   Widget build(BuildContext context) {
     final userId = _authService.currentUser?.uid ?? '';
 
-    return FutureBuilder<Map<String, WorkLog>>(
-      future: _firestoreService.getEquipmentsWithLatestLog(userId),
+    return FutureBuilder<List<WorkLog>>(
+      future: _firestoreService.getAllWorkLogs(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -40,9 +53,9 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
           return Center(child: Text('에러: ${snapshot.error}'));
         }
 
-        final equipmentLogs = snapshot.data ?? {};
+        final allLogs = snapshot.data ?? [];
 
-        if (equipmentLogs.isEmpty) {
+        if (allLogs.isEmpty) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -58,11 +71,31 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
           );
         }
 
-        // 최근 일지 작성 순으로 정렬
-        final sortedEquipments = equipmentLogs.entries.toList()
-          ..sort((a, b) => b.value.createdAt.compareTo(a.value.createdAt));
+        // 설비별로 그룹핑하여 정보 계산
+        final Map<String, List<WorkLog>> equipmentLogsMap = {};
+        for (var log in allLogs) {
+          equipmentLogsMap.putIfAbsent(log.equipmentName, () => []).add(log);
+        }
 
-        final allEquipmentNames = sortedEquipments.map((e) => e.key).toList();
+        // 설비 정보 리스트 생성
+        final equipmentInfoList = equipmentLogsMap.entries.map((entry) {
+          final logs = entry.value;
+          logs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return EquipmentInfo(
+            name: entry.key,
+            logCount: logs.length,
+            latestDate: logs.first.createdAt,
+          );
+        }).toList();
+
+        // 정렬: 1순위 날짜(최근순), 2순위 설비명(알파벳순)
+        equipmentInfoList.sort((a, b) {
+          final dateCompare = b.latestDate.compareTo(a.latestDate);
+          if (dateCompare != 0) return dateCompare;
+          return a.name.compareTo(b.name);
+        });
+
+        final allEquipmentNames = equipmentInfoList.map((e) => e.name).toList();
 
         return Column(
           children: [
@@ -117,16 +150,10 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: sortedEquipments.length,
+                itemCount: equipmentInfoList.length,
                 itemBuilder: (context, index) {
-                  final entry = sortedEquipments[index];
-                  final equipmentName = entry.key;
-                  final latestLog = entry.value;
-
-                  // 내용 미리보기 (최대 50자)
-                  final preview = latestLog.content.length > 50
-                      ? '${latestLog.content.substring(0, 50)}...'
-                      : latestLog.content;
+                  final info = equipmentInfoList[index];
+                  final dateStr = DateFormat('yy/MM/dd').format(info.latestDate);
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -140,7 +167,7 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => EquipmentHistoryScreen(
-                              equipmentName: equipmentName,
+                              equipmentName: info.name,
                             ),
                           ),
                         );
@@ -152,7 +179,7 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              equipmentName,
+                              info.name,
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -161,14 +188,19 @@ class _EquipmentViewScreenState extends State<EquipmentViewScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              preview.isNotEmpty ? preview : '내용 없음',
+                              '설비 이력: ${info.logCount}개',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey.shade600,
-                                height: 1.4,
+                                color: Colors.grey.shade700,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '가장 최근 이력: $dateStr',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade700,
+                              ),
                             ),
                           ],
                         ),
@@ -240,13 +272,23 @@ class EquipmentHistoryScreen extends StatelessWidget {
           final sortedDates = groupedLogs.keys.toList()
             ..sort((a, b) => b.compareTo(a));
 
+          // 모든 일지를 날짜별로 평탄화
+          final List<WorkLog> allLogs = [];
+          for (final date in sortedDates) {
+            allLogs.addAll(groupedLogs[date]!);
+          }
+
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: sortedDates.length,
+            itemCount: allLogs.length,
             itemBuilder: (context, index) {
-              final date = sortedDates[index];
-              final logs = groupedLogs[date]!;
-              final dateStr = DateFormat('yyyy년 MM월 dd일').format(date);
+              final log = allLogs[index];
+              final dateStr = DateFormat('yyyy년 MM월 dd일').format(log.createdAt);
+
+              // 내용 미리보기 (최대 50자)
+              final preview = log.content.length > 50
+                  ? '${log.content.substring(0, 50)}...'
+                  : log.content;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -259,10 +301,9 @@ class EquipmentHistoryScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => EquipmentDateLogsScreen(
-                          equipmentName: equipmentName,
-                          date: date,
-                          logs: logs,
+                        builder: (context) => WorkLogDetailScreen(
+                          workLog: log,
+                          showEquipmentFirst: true,
                         ),
                       ),
                     );
@@ -270,31 +311,28 @@ class EquipmentHistoryScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              dateStr,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '일지 ${logs.length}개',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          dateStr,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade700,
+                          ),
                         ),
-                        const Icon(Icons.chevron_right, color: Colors.grey),
+                        const SizedBox(height: 8),
+                        Text(
+                          preview.isNotEmpty ? preview : '내용 없음',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
