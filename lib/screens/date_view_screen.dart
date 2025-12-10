@@ -70,12 +70,28 @@ class _DateViewScreenState extends State<DateViewScreen> {
   }
 
   void _goToNextDateWithLog() {
-    // 현재 날짜보다 이후 날짜 중 일지가 있는 날짜 찾기
-    final nextDates = _datesWithLogs.where((date) => date.isAfter(_currentDate)).toList();
-    if (nextDates.isNotEmpty) {
-      setState(() {
-        _currentDate = nextDates.last; // 가장 오래된 날짜 (reversed list이므로)
-      });
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+
+    // 오늘 날짜는 일지가 없어도 이동 가능
+    if (_currentDate.isBefore(today)) {
+      // 현재 날짜와 오늘 사이에 일지가 있는 날짜 찾기
+      final nextDates = _datesWithLogs.where((date) =>
+        date.isAfter(_currentDate) && date.isBefore(today)
+      ).toList();
+
+      if (nextDates.isNotEmpty) {
+        setState(() {
+          _currentDate = nextDates.last; // 가장 오래된 날짜
+        });
+      } else {
+        // 다음 일지가 없으면 오늘로 이동
+        setState(() {
+          _currentDate = today;
+        });
+      }
+    } else if (_currentDate == today) {
+      // 이미 오늘이면 이동 불가
+      return;
     }
   }
 
@@ -86,8 +102,10 @@ class _DateViewScreenState extends State<DateViewScreen> {
     }
 
     final hasPreviousLog = _datesWithLogs.any((date) => date.isBefore(_currentDate));
-    final hasNextLog = _datesWithLogs.any((date) => date.isAfter(_currentDate));
     final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    // 오늘 날짜는 일지가 없어도 이동 가능
+    final hasNextLog = _currentDate.isBefore(today) ||
+        _datesWithLogs.any((date) => date.isAfter(_currentDate) && !date.isAfter(today));
     final isFutureDate = _currentDate.isAfter(today);
 
     return Column(
@@ -155,9 +173,25 @@ class _DateViewScreenState extends State<DateViewScreen> {
           ),
         ),
         Expanded(
-          child: DateLogsList(
-            date: _currentDate,
-            key: ValueKey(_currentDate.toString()),
+          child: GestureDetector(
+            onHorizontalDragEnd: (details) {
+              // 스와이프 감도 설정
+              if (details.primaryVelocity! > 800) {
+                // 오른쪽 스와이프 → 이전 날짜
+                if (hasPreviousLog) {
+                  _goToPreviousDateWithLog();
+                }
+              } else if (details.primaryVelocity! < -800) {
+                // 왼쪽 스와이프 → 다음 날짜
+                if (hasNextLog) {
+                  _goToNextDateWithLog();
+                }
+              }
+            },
+            child: DateLogsList(
+              date: _currentDate,
+              key: ValueKey(_currentDate.toString()),
+            ),
           ),
         ),
       ],
