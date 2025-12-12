@@ -315,21 +315,23 @@ class _DateLogsListState extends State<DateLogsList> {
         final workLogs = snapshot.data ?? [];
 
         if (workLogs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.event_note, size: 80, color: Colors.grey.shade300),
-                const SizedBox(height: 16),
-                Text(
-                  '${DateFormat('MM월 dd일').format(widget.date)}에\n작성된 일지가 없습니다',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade600,
+          return SizedBox.expand(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.event_note, size: 80, color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  Text(
+                    '${DateFormat('MM월 dd일').format(widget.date)}에\n작성된 일지가 없습니다',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         }
