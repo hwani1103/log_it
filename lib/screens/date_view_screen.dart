@@ -22,6 +22,8 @@ class _DateViewScreenState extends State<DateViewScreen> {
   DateTime _currentDate = DateTime.now();
   bool _isLoading = true;
   double _dragStartX = 0;
+  double _dragEndX = 0;
+  bool _hasDragged = false;
 
   @override
   void initState() {
@@ -175,41 +177,30 @@ class _DateViewScreenState extends State<DateViewScreen> {
         ),
         Expanded(
           child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
             onHorizontalDragStart: (details) {
               _dragStartX = details.globalPosition.dx;
-            },
-            onHorizontalDragEnd: (details) {
-              final velocity = details.primaryVelocity ?? 0;
-
-              // velocity 기반 (빠른 스와이프) 또는 distance 기반 (천천히 긴 스와이프)
-              // velocity > 300 이면 즉시 인식
-              if (velocity > 300) {
-                // 오른쪽 스와이프 → 이전 날짜
-                if (hasPreviousLog) {
-                  _goToPreviousDateWithLog();
-                }
-              } else if (velocity < -300) {
-                // 왼쪽 스와이프 → 다음 날짜
-                if (hasNextLog) {
-                  _goToNextDateWithLog();
-                }
-              }
+              _dragEndX = details.globalPosition.dx;
+              _hasDragged = false;
             },
             onHorizontalDragUpdate: (details) {
-              // 드래그 거리가 100px 이상이면 스와이프로 인식
-              final distance = details.globalPosition.dx - _dragStartX;
-              if (distance > 100) {
-                // 오른쪽으로 긴 드래그 → 이전 날짜
-                if (hasPreviousLog) {
-                  _dragStartX = double.infinity; // 중복 호출 방지
-                  _goToPreviousDateWithLog();
-                }
-              } else if (distance < -100) {
-                // 왼쪽으로 긴 드래그 → 다음 날짜
-                if (hasNextLog) {
-                  _dragStartX = double.infinity; // 중복 호출 방지
-                  _goToNextDateWithLog();
-                }
+              _dragEndX = details.globalPosition.dx;
+              _hasDragged = true;
+            },
+            onHorizontalDragEnd: (details) {
+              if (!_hasDragged) return;
+
+              final distance = _dragEndX - _dragStartX;
+              final velocity = details.primaryVelocity ?? 0;
+
+              // 조건: (빠른 스와이프: velocity > 200 && 거리 > 20) 또는 (긴 드래그: 거리 > 80)
+              final isRightSwipe = (velocity > 200 && distance > 20) || distance > 80;
+              final isLeftSwipe = (velocity < -200 && distance < -20) || distance < -80;
+
+              if (isRightSwipe && hasPreviousLog) {
+                _goToPreviousDateWithLog();
+              } else if (isLeftSwipe && hasNextLog) {
+                _goToNextDateWithLog();
               }
             },
             child: DateLogsList(
