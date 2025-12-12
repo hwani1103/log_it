@@ -31,11 +31,23 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
   final List<File> _mediaFiles = [];
   final List<String> _mediaTypes = [];
   bool _isLoading = false;
+  List<String> _existingEquipmentNames = [];
 
   @override
   void initState() {
     super.initState();
     // EquipmentAliasService는 싱글톤이며 main.dart에서 이미 로드됨
+    _loadExistingEquipmentNames();
+  }
+
+  Future<void> _loadExistingEquipmentNames() async {
+    final userId = _authService.currentUser?.uid ?? '';
+    if (userId.isNotEmpty) {
+      final names = await _firestoreService.getUniqueEquipmentNames(userId);
+      setState(() {
+        _existingEquipmentNames = names;
+      });
+    }
   }
 
   @override
@@ -321,13 +333,80 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _equipmentController,
-            decoration: const InputDecoration(
-              labelText: '설비명',
-              border: OutlineInputBorder(),
-            ),
-            textCapitalization: TextCapitalization.characters,
+          Autocomplete<String>(
+            optionsBuilder: (TextEditingValue textEditingValue) {
+              // 아무것도 입력 안 했으면 모든 설비명 표시
+              if (textEditingValue.text.isEmpty) {
+                return _existingEquipmentNames;
+              }
+
+              // 입력한 텍스트로 필터링 (대소문자 구분 없이)
+              final searchText = textEditingValue.text.toLowerCase();
+              return _existingEquipmentNames.where((String option) {
+                return option.toLowerCase().contains(searchText);
+              });
+            },
+            onSelected: (String selection) {
+              _equipmentController.text = selection;
+            },
+            fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+              // controller를 _equipmentController와 동기화
+              _equipmentController.addListener(() {
+                if (controller.text != _equipmentController.text) {
+                  controller.text = _equipmentController.text;
+                }
+              });
+              controller.addListener(() {
+                if (_equipmentController.text != controller.text) {
+                  _equipmentController.text = controller.text;
+                }
+              });
+
+              return TextField(
+                controller: controller,
+                focusNode: focusNode,
+                decoration: const InputDecoration(
+                  labelText: '설비명',
+                  hintText: '터치하여 기존 설비 선택 또는 새로 입력',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.characters,
+              );
+            },
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4.0,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final String option = options.elementAt(index);
+                        return InkWell(
+                          onTap: () {
+                            onSelected(option);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 12.0,
+                            ),
+                            child: Text(
+                              option,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16),
           Expanded(
