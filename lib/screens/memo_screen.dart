@@ -338,18 +338,22 @@ class _MemoScreenState extends State<MemoScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 날짜 구분선과 버튼을 분리
+                    // 날짜 구분선
                     Row(
                       children: [
+                        Text(
+                          dateStr,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: isSelected ? Colors.blue : Colors.black54,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            '$dateStr ${'─' * 30}',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: isSelected ? Colors.blue : Colors.black54,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.visible,
+                          child: Container(
+                            height: 1,
+                            color: isSelected ? Colors.blue : Colors.black26,
                           ),
                         ),
                       ],
