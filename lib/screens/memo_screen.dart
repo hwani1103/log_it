@@ -345,7 +345,7 @@ class _MemoScreenState extends State<MemoScreen> {
                           dateStr,
                           style: TextStyle(
                             fontSize: 15,
-                            color: isSelected ? Colors.blue : Colors.black54,
+                            color: isSelected ? Colors.blue : Colors.black87,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
